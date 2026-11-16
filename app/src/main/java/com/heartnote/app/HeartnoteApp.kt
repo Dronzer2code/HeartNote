@@ -16,7 +16,7 @@ class HeartnoteApp : Application() {
         sdk.config.requestedMetrics =
             SmartSpectraConfig.breathingMetrics +
                 SmartSpectraConfig.cardioMetrics +
-                listOf(MetricType.EXPRESSIONS)
+                listOf(MetricType.EXPRESSIONS, MetricType.TALKING)
         sdk.useCamera(CameraSelection.Front)
     }
 }

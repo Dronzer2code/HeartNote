@@ -143,7 +143,7 @@ Metric fields used (VERIFIED against decompiled proto classes, except where note
 | `metrics.breathing.rateList` | `MeasurementWithConfidence` | F5 live breathing rate |
 | `metrics.breathing.upperTraceList` | `Measurement`: `.value: Float`, `.timestamp: Long`, `.stable: Boolean` | F7 breath glow |
 | `metrics.face.expressionList[].scoresList` | `ExpressionScore`: `.type: ExpressionType`, `.confidence: Float` | F8 (`ExpressionType.HAPPY` — enum value name still to confirm on device) |
-| `metrics.face.talkingList` | `DetectionStatus` | available; may help S5 (talking-noise mitigation) |
+| `metrics.face.talkingList` | `DetectionStatus` (`.detected`, `.stable`, `.timestamp`) | may help S5. Empty unless `MetricType.TALKING` is explicitly in `requestedMetrics` (observed 2026-11-16) |
 | `metrics.cardio.hrvList` | `Hrv` | NOT USED (C5) |
 
 `MetricType` enum values include `PULSE_RATE`, `ARTERIAL_PRESSURE_TRACE`, `BREATHING_RATE`, `EXPRESSIONS`, `TALKING`, `HRV`, `PULSE_RATE_STRICT`, `BREATHING_RATE_STRICT`.
