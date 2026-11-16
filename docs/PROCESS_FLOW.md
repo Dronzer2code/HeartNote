@@ -33,18 +33,21 @@ flowchart TD
 stateDiagram-v2
     [*] --> Confirm
     Confirm --> Preview: user confirms "I am recording myself"
-    Preview --> LockOn: user taps Start AND metrics.hasFace()
-    LockOn --> Recording: metrics.hasCardio() AND pulse rate received
-    LockOn --> Preview: 15 s timeout (show "Move to better light")
-    Recording --> Processing: Stop tapped OR 60 s reached
+    Preview --> LockOn: user taps Start AND a face emission within the last 1000 ms
+    LockOn --> Recording: first pulseRate sample received after LockOn entry
+    LockOn --> Preview: 20 s timeout (show "Move to better light")
+    Recording --> Flushing: Stop tapped OR 60 s reached
     Recording --> Preview: face lost > 3 s (discard, show reason)
+    Flushing --> Processing: 2.5 s SDK tail flush elapsed
     Processing --> [*]: note saved → PlaybackScreen
     Processing --> Preview: processing error (show error)
 ```
 
 Rules:
 - Audio capture starts on entering `Recording`, not during `LockOn` (lock-on silence is not part of the note).
-- The SDK runs from `Preview` through `Recording`. `sdk.stop()` is called on leaving `Recording` or when the screen stops.
+- Audio capture stops IMMEDIATELY on entering `Flushing` (this fixes `durationMs`). The SDK keeps running for 2.5 s to flush delayed samples (measured medians: bpTrace 1.5 s, pulseRate 2.0 s behind wall clock), then `sdk.stop()`. UI during `Flushing`: "Finishing your heartbeat…".
+- Metrics emissions are split by type (face, cardio, breathing arrive as separate messages), so "face present" = a face-bearing emission within the last 1000 ms.
+- The SDK runs from `Preview` through `Flushing`. `sdk.stop()` is called on leaving `Flushing` or when the screen stops.
 - `sdk.processingStatus == ERROR` from any state → show `sdk.error`, return to `Preview`.
 
 ## RECORDING PIPELINE
@@ -68,9 +71,10 @@ sequenceDiagram
         AC->>AC: append PCM to voice.wav
     end
     UI->>RS: stop()
-    RS->>AC: stop()
+    RS->>AC: stop() immediately (fixes durationMs)
+    Note over RS,SC: Flushing — SDK runs 2.5 s more to flush delayed samples
     RS->>SC: sdk.stop()
-    RS->>SA: align all samples to tMs
+    RS->>SA: align all samples to tMs (tMs = timestamp_us/1000 − audioStartEpochMs)
 ```
 
 ## PROCESSING PIPELINE (F6)

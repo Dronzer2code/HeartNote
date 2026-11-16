@@ -121,6 +121,17 @@ Observed properties (VERIFIED 2026-11-16 by decompiling smartspectra-3.5.0.aar `
 
 Additional verified API: `sdk.start()`/`sdk.stop()`/`sdk.reset()` are `suspend` functions; `SmartSpectraSdk.availableCameras(context)` (suspend); `sdk.checkDeviceReadiness()`; `sdk.version: String`; `CameraSelection.Front/Back/Default/ById(id)`; `SmartSpectraConfig` companion lists `breathingMetrics`, `cardioMetrics`, `faceMetrics`, `micromotionMetrics`, `edaMetrics`; `sdk.config.enableTelemetry: Boolean` exists (relevant to CONSENT AND DATA HANDLING — document or disable before submission). The SDK self-initializes via androidx.startup (`SmartSpectraInitializer`); no manual context init needed.
 
+Emission behaviour (MEASURED 2026-11-16 on the Android 15 device):
+
+- Emissions are split by type: face, cardio and breathing arrive in SEPARATE `Metrics` messages, so `hasFace()`/`hasCardio()`/`hasBreathing()` describe only that emission. "Face present" MUST be defined as: a face-bearing emission arrived within the last 1000 ms. F3 lock-on complete = first `pulseRate` sample received after entering LockOn. LockOn timeout: 20 s.
+- Delivery latency (arrival − sample timestamp, medians): `arterialPressureTrace` 1.5 s, `pulseRate` 2.0 s, `breathing.upperTrace` 0.2 s.
+- **SDK tail flush rule**: on Stop, stop `AudioCapture` immediately (fixes `durationMs`), keep the SDK running for 2.5 s to flush delayed samples, then `sdk.stop()`. UI during the flush: "Finishing your heartbeat…" (see `PROCESS_FLOW.md` Flushing state).
+
+Live display rules (F5):
+
+- Pulse BPM: median of the last 5 `pulseRate` values (S5 jump mitigation).
+- Breathing: live waveform drawn from `breathing.upperTraceList` (`SignalWaveform.kt`). `breathing.rateList` is sparse and noisy (7–10 samples per session, values 4–24 observed), so the breathing-rate NUMBER is shown only as small secondary text, and only when a sample arrived within the last 10 s.
+
 Metric fields used (VERIFIED against decompiled proto classes, except where noted):
 
 | Field | Type of item | Heartnote use |
@@ -146,19 +157,18 @@ Alternative: SDK headless mode (`android/docs/headless-mode.md`, caller-owned ca
 
 - `AudioRecord`, source `MediaRecorder.AudioSource.MIC`, 48 000 Hz, mono, PCM 16-bit.
 - Written to `notes/<id>/voice.wav` during recording.
-- `audioStartNs = SystemClock.elapsedRealtimeNanos()` captured when the first buffer is read.
+- `audioStartEpochMs = System.currentTimeMillis()` captured when the first buffer is read (SDK timestamps are epoch µs, so this is the shared-timeline anchor — see § TIMELINE ALIGNMENT).
 - Max note duration: 60 s (DECISION, changeable). Limits trial usage and file size.
 
 ## TIMELINE ALIGNMENT (`signal/SignalAligner.kt`)
 
 All stored signal times are **milliseconds from audio start** (`tMs`).
 
-Approach (pending spike S3):
-1. On each `sdk.metrics` emission, record `arrivalNs = SystemClock.elapsedRealtimeNanos()`.
-2. For the newest sample in the emission, compute `offset = arrivalNs − sdkTimestampToNs(sample.timestamp)`.
-3. Use the minimum observed offset across the session (least latency) as the session offset.
-4. `tMs = (sdkTimestampToNs(ts) + offset − audioStartNs) / 1e6`.
-5. Deduplicate samples by SDK timestamp (lists MAY be cumulative or batched — UNKNOWN, spike S4).
+Algorithm (REPLACED 2026-11-16 after S3 answered — SDK timestamps are Unix epoch µs, same clock as `System.currentTimeMillis()`, so no offset estimation is needed):
+1. `audioStartEpochMs = System.currentTimeMillis()` captured at the first `AudioRecord` buffer read.
+2. `tMs = timestamp_us / 1000 − audioStartEpochMs`.
+3. Keep trace samples with `tMs < 0` (pre-recording context improves peak detection at the start), but drop BEATS with `tMs < 0` or `tMs > durationMs`.
+4. Deduplicate samples by SDK timestamp as a guard only (S4: lists are incremental; duplicates not observed).
 
 ## BEAT EXTRACTION (`signal/BeatExtractor.kt`)
 
@@ -169,7 +179,8 @@ Primary source: `arterialPressureTraceList`.
 4. Reject inter-beat intervals outside 333–1500 ms (40–180 BPM). Fill gaps using the rate fallback for that segment.
 
 Fallback source: `pulseRateList`.
-- Integrate phase: `t[n+1] = t[n] + 60000 / bpmAt(t[n])`, where `bpmAt` linearly interpolates pulse rate samples.
+- Apply a 5-sample median filter to pulse rate values first (S5: ~20 BPM jumps observed around face movement/loss).
+- Integrate phase: `t[n+1] = t[n] + 60000 / bpmAt(t[n])`, where `bpmAt` linearly interpolates the filtered pulse rate samples.
 
 Each note stores `beatSource = "trace" | "rate" | "mixed"`. UI label (R6):
 - `trace`: "Heartbeat timed to your measured pulse"
@@ -218,13 +229,24 @@ Storage root: `context.filesDir/notes/<id>/` where `<id>` is a UUID.
 {
   "version": 1,
   "durationMs": 42000,
+  "audioStartEpochMs": 1794567890123,
   "beatSource": "trace",
   "beatsMs": [812, 1640, 2455],
   "breathing": [{ "tMs": 0, "v": 0.12 }],
   "pulseRate": [{ "tMs": 1000, "bpm": 74.2 }],
-  "smiles": [{ "startMs": 12000, "endMs": 14500 }]
+  "smiles": [{ "startMs": 12000, "endMs": 14500 }],
+  "raw": {
+    "bpTrace": [{ "tMs": -850, "v": 0.51, "c": 0.93, "stable": true }],
+    "pulseRate": [{ "tMs": 1000, "v": 74.2, "c": 0.88 }],
+    "brUpperTrace": [{ "tMs": 0, "v": 0.12 }],
+    "brRate": [{ "tMs": 5000, "v": 14.0, "c": 0.7 }],
+    "expressions": [{ "tMs": 1200, "type": "HAPPY", "c": 0.71 }],
+    "talking": [{ "tMs": 1200, "detected": true }]
+  }
 }
 ```
+
+`raw` (added Day 2) stores ALL aligned samples unfiltered — including trace samples with `tMs < 0` — so beat peaks can be verified offline. `beatSource`, `beatsMs`, `breathing`, `pulseRate`, `smiles` are filled by the Day 3 processing pipeline; until then they are null/empty.
 
 `pulseRate` is stored for beat regeneration only. It is NOT displayed during playback (C1).
 
@@ -259,10 +281,10 @@ Source for the DEV post's required section and for `ConsentScreen.kt` copy.
 | ID | Question | Impact if negative |
 |---|---|---|
 | S1 | ANSWERED 2026-11-16 (decompiled AAR): `sdk.metrics` is `LiveData<MetricsProto.Metrics>` AND `sdk.metricsFlow` is `SharedFlow<MetricsProto.Metrics>`. Collect `metricsFlow` in a coroutine (ViewModel `viewModelScope`), expose `StateFlow` to Compose — implemented in `RecordViewModel`. | — |
-| S2 | Is `arterialPressureTraceList` populated on the free trial key? (A third-party SDK mirror lists the relative blood-pressure waveform as access-on-request.) Check `S2 bpTraceEverNonEmpty=` in the `HeartnoteSpike` Logcat output. | Use `pulseRateList` fallback; `beatSource = "rate"`. |
-| S3 | Units and epoch of `.timestamp` (Long; ms / µs; session-relative / wall clock / monotonic)? Each `HeartnoteSpike` emission line logs `arrivalElapsedMs` + `arrivalEpochMs` next to `firstTs`/`lastTs` — compare magnitudes. | Alignment formula changes. |
-| S4 | Do metric lists contain only new samples per emission or cumulative history? Presage's own minimal-app filters `it.timestamp > lastSeenTimestamp`, implying cumulative/overlapping lists. Confirm via `n=` vs `new=` in the `HeartnoteSpike` log. | Dedupe strategy changes. |
-| S5 | Does the pulse signal stay stable while the user talks? (`metrics.face.talkingList` + `TALKING` metric type exist and could gate this.) | Lengthen F3 lock-on; smooth rate; show "speak naturally, keep your face steady". |
+| S2 | ANSWERED 2026-11-16 (device run): `arterialPressureTraceList` IS populated on the trial key. ~29.8 Hz, delivered in ~1 s chunks of 30 samples, contiguous (33 ms gaps). The first chunk can contain up to 330 samples of backlog. Primary beat source = `"trace"`. | — |
+| S3 | ANSWERED 2026-11-16 (device run): all `.timestamp` values are Unix epoch MICROSECONDS (wall clock). `tMs = timestamp_us / 1000 − audioStartEpochMs` (see § TIMELINE ALIGNMENT). | — |
+| S4 | ANSWERED 2026-11-16 (device run): lists are INCREMENTAL — `n == new` in all 2,816 observed emissions. Keep timestamp dedupe as a guard only. | — |
+| S5 | PARTIALLY ANSWERED 2026-11-16 (device run): BPM stayed within 78–89 in a clean 46 s session; jumps of ~20 BPM appeared around face movement/loss. Mitigation: 5-sample median filter on pulse rate (live display and beat fallback) and keep the RR-interval rejection in `BeatExtractor`. (`metrics.face.talkingList` + `TALKING` metric type remain available if talking itself proves noisy.) | — |
 | S6 | Free-trial usage limits per key (minutes/sessions)? | Limit test runs; ask on Presage Discord. |
 
 Answers MUST be written back into this file, replacing UNKNOWN entries.
