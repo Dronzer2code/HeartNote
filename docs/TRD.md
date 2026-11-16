@@ -109,28 +109,33 @@ sdk.config.requestedMetrics =
 // lifecycleScope.launch { sdk.start() } / sdk.stop()
 ```
 
-Observed properties (sample uses `.observe(lifecycleOwner) { }`; concrete type UNKNOWN, assumed LiveData — verify in spike S1):
+Observed properties (VERIFIED 2026-11-16 by decompiling smartspectra-3.5.0.aar `classes.jar` with javap):
 
-| Property | Use |
-|---|---|
-| `sdk.processingStatus` | `IDLE`, `STARTING`, `RUNNING`, `STOPPING`, `ERROR` → drives RecordScreen state |
-| `sdk.validationStatus` | `code.name` shown as user hint (e.g., face not found) |
-| `sdk.error` | Error banner |
-| `sdk.metrics` | Signal data |
+| Property | Type | Use |
+|---|---|---|
+| `sdk.processingStatus` | `LiveData<ProcessingStatus>` (`IDLE`, `STARTING`, `RUNNING`, `STOPPING`, `ERROR`) | drives RecordScreen state |
+| `sdk.validationStatus` | `LiveData<ValidationStatus>`; has `.code: ValidationCode` and `.hint: String` (ready-made user hint) | show `.hint` (e.g., face not found) |
+| `sdk.error` | `LiveData<SmartSpectraError>`; has `.code`, `.message`, `.retryable` | Error banner |
+| `sdk.metrics` | `LiveData<MetricsProto.Metrics>` | Signal data |
+| `sdk.metricsFlow` | `SharedFlow<MetricsProto.Metrics>` — same emissions as `sdk.metrics` | preferred collection path in coroutines/Compose |
 
-Metric fields used:
+Additional verified API: `sdk.start()`/`sdk.stop()`/`sdk.reset()` are `suspend` functions; `SmartSpectraSdk.availableCameras(context)` (suspend); `sdk.checkDeviceReadiness()`; `sdk.version: String`; `CameraSelection.Front/Back/Default/ById(id)`; `SmartSpectraConfig` companion lists `breathingMetrics`, `cardioMetrics`, `faceMetrics`, `micromotionMetrics`, `edaMetrics`; `sdk.config.enableTelemetry: Boolean` exists (relevant to CONSENT AND DATA HANDLING — document or disable before submission). The SDK self-initializes via androidx.startup (`SmartSpectraInitializer`); no manual context init needed.
+
+Metric fields used (VERIFIED against decompiled proto classes, except where noted):
 
 | Field | Type of item | Heartnote use |
 |---|---|---|
 | `metrics.hasFace()` | Boolean | F2 gate |
 | `metrics.hasCardio()` | Boolean | F3 lock-on complete |
-| `metrics.cardio.pulseRateList` | `.value`, `.timestamp` | F5 live BPM; beat fallback |
-| `metrics.cardio.arterialPressureTraceList` | `.value`, `.timestamp` | Primary beat source (availability UNKNOWN — spike S2) |
-| `metrics.breathing.rateList` | `.value` | F5 live breathing rate |
-| `metrics.breathing.upperTraceList` | `.value`, `.timestamp` (assumed) | F7 breath glow |
-| `metrics.face.expressionList[].scoresList` | `.type: ExpressionType`, `.confidence` | F8 (`ExpressionType.HAPPY`) |
-| `metrics.cardio.hrvList` | `.rmssd` | NOT USED (C5) |
+| `metrics.cardio.pulseRateList` | `MeasurementWithConfidence`: `.value: Float`, `.timestamp: Long`, `.confidence: Float`, `.stable: Boolean` | F5 live BPM; beat fallback |
+| `metrics.cardio.arterialPressureTraceList` | `MeasurementWithConfidence` (same fields) | Primary beat source (populated-on-trial UNKNOWN — spike S2) |
+| `metrics.breathing.rateList` | `MeasurementWithConfidence` | F5 live breathing rate |
+| `metrics.breathing.upperTraceList` | `Measurement`: `.value: Float`, `.timestamp: Long`, `.stable: Boolean` | F7 breath glow |
+| `metrics.face.expressionList[].scoresList` | `ExpressionScore`: `.type: ExpressionType`, `.confidence: Float` | F8 (`ExpressionType.HAPPY` — enum value name still to confirm on device) |
+| `metrics.face.talkingList` | `DetectionStatus` | available; may help S5 (talking-noise mitigation) |
+| `metrics.cardio.hrvList` | `Hrv` | NOT USED (C5) |
 
+`MetricType` enum values include `PULSE_RATE`, `ARTERIAL_PRESSURE_TRACE`, `BREATHING_RATE`, `EXPRESSIONS`, `TALKING`, `HRV`, `PULSE_RATE_STRICT`, `BREATHING_RATE_STRICT`.
 Imports: `MetricType` from `com.presagetech.smartspectra.proto.MetricTypesProto`; `ExpressionType` from `com.presagetech.smartspectra.proto.MetricsProto`.
 
 Compose integration: `CameraPreview.kt` creates `PreviewView` inside `AndroidView(factory = { PreviewView(it) })` and passes `surfaceProvider` to `SignalCapture` before `sdk.start()`.
@@ -253,11 +258,11 @@ Source for the DEV post's required section and for `ConsentScreen.kt` copy.
 
 | ID | Question | Impact if negative |
 |---|---|---|
-| S1 | Is `sdk.metrics` LiveData, Flow, or another type? How to collect it in Compose? | Adapter code only. |
-| S2 | Is `arterialPressureTraceList` populated on the free trial key? (A third-party SDK mirror lists the relative blood-pressure waveform as access-on-request.) | Use `pulseRateList` fallback; `beatSource = "rate"`. |
-| S3 | Units and epoch of `.timestamp` (ms / µs; session-relative / wall clock / monotonic)? | Alignment formula changes. |
-| S4 | Do metric lists contain only new samples per emission or cumulative history? | Dedupe strategy changes. |
-| S5 | Does the pulse signal stay stable while the user talks? | Lengthen F3 lock-on; smooth rate; show "speak naturally, keep your face steady". |
+| S1 | ANSWERED 2026-11-16 (decompiled AAR): `sdk.metrics` is `LiveData<MetricsProto.Metrics>` AND `sdk.metricsFlow` is `SharedFlow<MetricsProto.Metrics>`. Collect `metricsFlow` in a coroutine (ViewModel `viewModelScope`), expose `StateFlow` to Compose — implemented in `RecordViewModel`. | — |
+| S2 | Is `arterialPressureTraceList` populated on the free trial key? (A third-party SDK mirror lists the relative blood-pressure waveform as access-on-request.) Check `S2 bpTraceEverNonEmpty=` in the `HeartnoteSpike` Logcat output. | Use `pulseRateList` fallback; `beatSource = "rate"`. |
+| S3 | Units and epoch of `.timestamp` (Long; ms / µs; session-relative / wall clock / monotonic)? Each `HeartnoteSpike` emission line logs `arrivalElapsedMs` + `arrivalEpochMs` next to `firstTs`/`lastTs` — compare magnitudes. | Alignment formula changes. |
+| S4 | Do metric lists contain only new samples per emission or cumulative history? Presage's own minimal-app filters `it.timestamp > lastSeenTimestamp`, implying cumulative/overlapping lists. Confirm via `n=` vs `new=` in the `HeartnoteSpike` log. | Dedupe strategy changes. |
+| S5 | Does the pulse signal stay stable while the user talks? (`metrics.face.talkingList` + `TALKING` metric type exist and could gate this.) | Lengthen F3 lock-on; smooth rate; show "speak naturally, keep your face steady". |
 | S6 | Free-trial usage limits per key (minutes/sessions)? | Limit test runs; ask on Presage Discord. |
 
 Answers MUST be written back into this file, replacing UNKNOWN entries.

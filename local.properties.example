@@ -1,0 +1,3 @@
+# Copy the sdk.dir line from your own local.properties (Android Studio generates it),
+# then add your Presage SmartSpectra API key from https://physiology.presagetech.com
+PRESAGE_API_KEY=
