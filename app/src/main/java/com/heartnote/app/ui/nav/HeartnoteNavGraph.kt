@@ -21,7 +21,10 @@ fun HeartnoteNavGraph() {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = Routes.RECORD) {
         composable(Routes.RECORD) {
-            RecordScreen(onNoteSaved = { id -> nav.navigate(Routes.playback(id)) })
+            RecordScreen(
+                onBack = { nav.popBackStack() },
+                onNoteSaved = { id -> nav.navigate(Routes.playback(id)) },
+            )
         }
         composable(
             Routes.PLAYBACK,

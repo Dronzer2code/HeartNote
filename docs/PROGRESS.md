@@ -41,5 +41,17 @@ Done:
 - Inter 400/500/600 (latin subset, OFL) in `res/font`; Lucide icons (ISC) as `HeartnoteIcons`; both licenses in `assets/licenses/`.
 - Components with `@Preview`s: `DotMatrixNumber`, `DotBarChart`, `TwoToneHeading`, `CircleIconButton`, `ArcNavBar`, `SlideActionPill`, `ProgressLine`. All previews rendered through Android Studio (`android studio render-compose-preview`) and checked against `ref-screens.webp`.
 
-Known issues:
+Known issues (Phase B):
 - This Android CLI version has no `android preview`; previews are rendered via `android studio render-compose-preview` (needs Studio open on the project).
+
+## 2026-11-17 — Phase C: beat bus, particle sphere, RecordScreen
+
+Done:
+- `LiveBeatScheduler` (6 s trace buffer, `BeatExtractor.detectBeats`, 1.8 s display delay, de-duplication, late-beat handling) with 2 unit tests that simulate the measured SDK delivery.
+- `ParticleEngine` (shared: rotation/drag/fling, touch push, ripples, perspective, 4 depth buckets via native `drawPoints`, blur glow on API 31+, frame loop, debug FPS overlay + `HeartnoteFps` Logcat line every 5 s, reduced motion) and `ParticleSphere` (2,400 Fibonacci points, noise, breath, beat ripples, dark core).
+- RecordScreen rebuilt to the middle reference with the DESIGN.md state table (Confirm checkbox → Preview → LockOn % → Recording timer → Flushing → Processing, Failed with Retry/Delete), circular desaturated camera preview in the sphere core fading to 0% on Recording, breathing waveform, lighting-tips sheet. Renders checked against the reference.
+
+Remaining (needs the phone): ≥ 50 fps check (`adb logcat -s HeartnoteFps`), sphere pulses vs displayed BPM, camera at 0% alpha still feeding the SDK (fallback: `CAMERA_ALPHA_RECORDING = 0.12f`), every state reachable.
+
+Known issues:
+- Live display delay: at the spec's 1,800 ms about a third of beats arrive after their slot and pulse up to ~0.4 s late; 2,300 ms fixes it (test evidence in DESIGN.md § BEAT SYNC). Kept at spec value — decide after seeing it on the phone.

@@ -180,7 +180,7 @@ File: `ui/components/ParticleSphere.kt` (uses `ParticleEngine`). Visual target: 
   - `beatImpulse`: each `BeatEvent` adds an expanding ripple. For particle angle θ from the camera-facing pole: `A × exp(−(t − t0 − θ/π × 0.25 s) / 0.12 s)` for t after the ripple reaches it, else 0. `A` = 0.13 for LUB, 0.065 for DUB.
 - Rotation: 6°/s around Y idle. Drag rotates the sphere (1° per dp); fling continues with decay 0.92/frame.
 - Touch interaction: particles whose projected position is within 56 dp of the finger are pushed radially outward (max 0.12 R), springing back over 350 ms after release.
-- Projection: perspective, camera distance 3 R. Point size 1.2–2.8 px and alpha 0.2–1.0 by depth (front = larger, brighter).
+- Projection: perspective, camera distance 3 R. Point size 1.2–2.8 px and alpha 0.2–1.0 by depth (front = larger, brighter). IMPLEMENTED as dp (× density): literal px are dust-sized on a ~3× screen and do not match the reference.
 - Colour: `SignalRed`. Draw in 4 depth buckets with one `drawPoints` call each (`PointMode.Points`, round cap).
 - Glow: on API 31+, draw a second copy at 35% alpha with `Modifier.graphicsLayer { renderEffect = BlurEffect(14.dp, 14.dp) }` behind the sharp layer. API 28–30: no glow.
 - Core: radial gradient from `DarkBg` (centre, alpha 0.9) to transparent at 0.75 R, drawn over particles, so the digits stay readable (reference has a dark centre).
@@ -197,6 +197,7 @@ Measured SDK latency (see `TRD.md`): `bpTrace` arrives ~1.5 s after the beat, in
 1. Keep a rolling 6 s buffer of `bpTrace` samples (epoch µs, value).
 2. On each new chunk, run the same peak detection as `BeatExtractor` on the buffer; emit only peaks newer than the last emitted peak.
 3. Schedule each new beat at `beatEpochMs + DISPLAY_DELAY_MS` (constant 1,800 ms) on the wall clock: LUB at that time, DUB at `+ clamp(0.3 × RR, 200, 350) ms`.
+   - MEASURED (2026-11-17, `LiveBeatSchedulerTest` with the TRD delivery pattern: 1 s chunks, median sample 1.5 s old → oldest ~2.0 s old): at 1,800 ms only 22/33 beats reach the scheduler before their slot; the rest are shown immediately on arrival (up to ~0.4 s late, a visible rhythm stutter). 2,300 ms puts 33/33 on their slot. The constant stays 1,800 ms pending a device check; changing `LiveBeatScheduler.DISPLAY_DELAY_MS` is the only edit needed.
 4. Before the first detected peak: no beat events; sphere shows breath + noise only.
 5. BPM digits: 5-sample median of `pulseRate`; `--` until the first value.
 6. NO haptics and NO heartbeat sound during recording (vibration and speaker output would corrupt the camera and mic signals).
