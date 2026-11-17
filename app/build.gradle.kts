@@ -38,6 +38,8 @@ android {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
+            // Phones only; debug keeps all ABIs so x86_64 emulators still run it.
+            ndk { abiFilters += "arm64-v8a" }
         }
     }
     compileOptions {

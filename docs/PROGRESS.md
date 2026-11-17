@@ -86,3 +86,35 @@ Remaining: Phase F; device checks for all animation and sync.
 
 Known issues:
 - Privacy copy says the SDK uses the internet for its licence key and points to Presage's policy; SDK telemetry details are still UNKNOWN (`sdk.config.enableTelemetry` exists — decide whether to set it false after reading Presage's docs).
+
+## 2026-11-17 — Phase F: validation and submission prep
+
+Done:
+- DESIGN.md § VALIDATION: forbidden-word search over `strings.xml` → zero matches; no hard-coded user-visible strings; every icon button has a contentDescription (the 5 null ones are decorative inside labelled parents); touch targets ≥ 48 dp; edge-to-edge insets on every screen, Hold immersive.
+- Emulator screenshots of Consent, Library (empty + with note), Playback (idle + playing), Record (permission state, sphere animating), Hold, Privacy and About sheets compared with the references.
+- Release build: `assembleRelease` succeeds with R8; arm64-v8a only; 50 MB (debug 132 MB). The FPS overlay and Logcat line are behind `BuildConfig.DEBUG` (unreachable in release).
+- `README.md` and `docs/SUBMISSION.md` (all DEV template sections) written.
+
+### Must be done by hand
+1. Reconnect the Android 15 phone and run the device checks below.
+2. Fill `<designer — TODO: Subarna to fill>` in README.md and SUBMISSION.md.
+3. SDK telemetry: read Presage's Telemetry and Privacy docs, fill the TODO in SUBMISSION.md and `TRD.md`, and decide whether to set `sdk.config.enableTelemetry = false`.
+4. Record the demo video (shot list below) and add `docs/media/demo.gif`.
+5. Publish the repo, then the DEV post with `#presagechallenge`.
+
+### Device checks still open (the emulator can't do these)
+- **Microphone**: the 2026-11-16 recording was all-zero audio. Check Settings › Privacy › Microphone access and that no other app holds the mic; the app now stops after 2 s of silence with an explanation.
+- RecordScreen ≥ 50 fps (`adb logcat -s HeartnoteFps`), sphere pulses ≈ displayed BPM; decide on `LiveBeatScheduler.DISPLAY_DELAY_MS` (1,800 spec vs 2,300 measured-better).
+- Camera at 0% alpha keeps feeding the SDK during Recording (fallback `CAMERA_ALPHA_RECORDING = 0.12f`).
+- Heartbeat audible on the phone speaker (`HeartbeatSynth.SPEAKER_HARMONICS`), and sound, vibration and dot flash land together.
+- Exported `.m4a` plays in WhatsApp on another phone.
+- Cold-start time (12.7 s on the overloaded emulator).
+
+### Demo video shot list (MVP.md § DEMO VIDEO SCRIPT, under 2 minutes)
+1. One line of problem: heartbeat keepsakes need a stethoscope; finger-on-camera apps can't record your voice.
+2. Open the app → consent screen (brief).
+3. Record: face in the circle, "Finding your pulse…", live BPM + breathing line + beating sphere, speak a short message.
+4. Playback: dot rows filling, a second camera filming the phone vibrating on each beat, smile marker.
+5. Hold: the particle heart beating, the phone held close.
+6. Export → share to WhatsApp → play on another phone.
+7. Close: no video stored, nothing uploaded by Heartnote, delete anytime.

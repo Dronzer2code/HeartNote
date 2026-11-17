@@ -1,6 +1,7 @@
 package com.heartnote.app.ui.onboarding
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -44,7 +45,8 @@ fun AboutSheet(onDismiss: () -> Unit) {
             Modifier
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
+                .padding(bottom = 32.dp)
+                .navigationBarsPadding(),
         ) {
             Text(stringResource(R.string.about_title), style = HnType.cardTitle, color = HnColors.InkBlack)
             Text(stringResource(R.string.about_body), style = HnType.bodySecondary, color = HnColors.InkBlack, modifier = Modifier.padding(top = 12.dp))
