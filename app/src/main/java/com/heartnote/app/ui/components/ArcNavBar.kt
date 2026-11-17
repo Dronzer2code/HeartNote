@@ -3,6 +3,9 @@ package com.heartnote.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -12,6 +15,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -44,12 +49,19 @@ fun ArcNavBar(
     outerRight: NavAction,
     label: String,
     modifier: Modifier = Modifier,
+    scrim: Color = HnColors.LightBg,
 ) {
     BoxWithConstraints(
         modifier
             .fillMaxWidth()
             .height(BAR_HEIGHT),
     ) {
+        // Scrolling content fades out under the arc (the reference shows clean background there).
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(Brush.verticalGradient(0f to scrim.copy(alpha = 0f), 0.35f to scrim, 1f to scrim)),
+        )
         val side = HnDims.circleButton
         val centreSize = HnDims.navCentreButton
         val centreY = centreSize / 2
@@ -103,6 +115,17 @@ fun ArcNavBar(
             )
         }
     }
+}
+
+/** Fills the system navigation-bar inset under the ArcNavBar with the screen background. */
+@Composable
+fun NavBarInsetFill(modifier: Modifier = Modifier, color: Color = HnColors.LightBg) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .windowInsetsBottomHeight(WindowInsets.navigationBars)
+            .background(color),
+    )
 }
 
 private val BAR_HEIGHT = 104.dp

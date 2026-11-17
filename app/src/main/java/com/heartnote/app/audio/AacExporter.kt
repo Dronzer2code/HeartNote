@@ -13,15 +13,28 @@ object AacExporter {
     private const val MIME = MediaFormat.MIMETYPE_AUDIO_AAC
     private const val BIT_RATE = 128_000
     private const val TIMEOUT_US = 10_000L
+    private const val SAMPLES_PER_FRAME = 1_024
 
     fun export(pcm: ShortArray, sampleRate: Int, out: File) {
         val partial = File(out.parentFile, out.name + ".part")
         partial.delete()
+        try {
+            exportTo(pcm, sampleRate, partial)
+        } catch (e: Exception) {
+            partial.delete()
+            throw e
+        }
+        if (!partial.renameTo(out)) {
+            partial.copyTo(out, overwrite = true)
+            partial.delete()
+        }
+    }
 
+    private fun exportTo(pcm: ShortArray, sampleRate: Int, partial: File) {
         val format = MediaFormat.createAudioFormat(MIME, sampleRate, 1).apply {
             setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
             setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE)
-            setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16_384)
+            setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, SAMPLES_PER_FRAME * 2)
         }
         val codec = MediaCodec.createEncoderByType(MIME)
         val muxer = MediaMuxer(partial.path, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
@@ -34,10 +47,6 @@ object AacExporter {
             runCatching { codec.stop() }
             codec.release()
             runCatching { muxer.release() }
-        }
-        if (!partial.renameTo(out)) {
-            partial.copyTo(out, overwrite = true)
-            partial.delete()
         }
     }
 
@@ -52,7 +61,9 @@ object AacExporter {
                 if (inIndex >= 0) {
                     val buffer = codec.getInputBuffer(inIndex)!!
                     buffer.clear()
-                    val count = min(buffer.remaining() / 2, pcm.size - inputPos)
+                    // One AAC frame per input: c2.android.aac.encoder advertises a 2,048-byte
+                    // input max-size and fails (UNKNOWN_ERROR) when given larger buffers.
+                    val count = min(min(buffer.remaining() / 2, SAMPLES_PER_FRAME), pcm.size - inputPos)
                     val ptsUs = inputPos * 1_000_000L / sampleRate
                     if (count <= 0) {
                         codec.queueInputBuffer(inIndex, 0, 0, ptsUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)

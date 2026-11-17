@@ -55,3 +55,19 @@ Remaining (needs the phone): ≥ 50 fps check (`adb logcat -s HeartnoteFps`), sp
 
 Known issues:
 - Live display delay: at the spec's 1,800 ms about a third of beats arrive after their slot and pulse up to ~0.4 s late; 2,300 ms fixes it (test evidence in DESIGN.md § BEAT SYNC). Kept at spec value — decide after seeing it on the phone.
+
+## 2026-11-17 — Phase D: Library and Playback
+
+Done:
+- `DotChartData` (peak-to-peak bpTrace per column, p95-normalised, 0.15–1) + 4 unit tests.
+- LibraryScreen (left reference): app mark, two-tone heading, latest-note card with dot-matrix beat count and 9×36 dot chart, earlier-notes list, empty state, ArcNavBar (Privacy, Hold latest, Record, Share latest, About).
+- PlaybackScreen (right reference): 8 s dot rows with playback progress, beat-flash column from BeatBus, smile markers + jump-to-first-smile heart, tap-to-seek, rename dialog, delete confirmation, export/share (F9, FileProvider `audio/mp4`), Bluetooth hint, ArcNavBar with Play/Pause + position label.
+- Verified on the emulator (Android 16) with the developer's 60 s recording: unfinished-note recovery → AAC export (980 KB) → Library card (85 beats) → Playback with progress and ~2 haptic events per beat.
+- Fixes found on the emulator: AAC encoder input-size crash; SecurityException reading a hidden vibration setting; disabled CircleIconButtons losing their circle; content scrolling under the nav (now fades).
+- Privacy fix: cloud backup and device transfer disabled (template default would have uploaded notes).
+
+Remaining: sound + vibration + dot flash sync by ear/hand on the phone; Phase E–F.
+
+Known issues:
+- Cold start took 12.7 s on the emulator, but the whole emulator was dropping frames; re-measure on the phone. If slow there, defer SDK configuration in `HeartnoteApp` until RecordScreen.
+- Studio preview rendering broke after a component signature change (stale fast-preview classes); screens were checked on the emulator instead.

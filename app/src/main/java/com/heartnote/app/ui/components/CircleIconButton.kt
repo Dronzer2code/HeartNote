@@ -1,6 +1,7 @@
 package com.heartnote.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -11,7 +12,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -37,19 +37,28 @@ fun CircleIconButton(
     size: Dp = HnDims.circleButton,
     containerColor: Color = if (dark) HnColors.DarkSurface else HnColors.CardWhite,
     iconColor: Color = if (dark) HnColors.OnDark else HnColors.InkBlack,
+    /** Thin outline for a white button on a white card (reference Library card). */
+    outlined: Boolean = false,
 ) {
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
             .background(containerColor)
-            .clickable(enabled = enabled, role = Role.Button, onClickLabel = contentDescription, onClick = onClick)
-            .alpha(if (enabled) 1f else 0.4f),
+            .then(if (outlined) Modifier.border(1.dp, HnColors.DotIdle, CircleShape) else Modifier)
+            .clickable(enabled = enabled, role = Role.Button, onClickLabel = contentDescription, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = iconColor, modifier = Modifier.size(HnDims.circleIcon))
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint = if (enabled) iconColor else iconColor.copy(alpha = DISABLED_ALPHA),
+            modifier = Modifier.size(HnDims.circleIcon),
+        )
     }
 }
+
+private const val DISABLED_ALPHA = 0.35f
 
 @Preview(name = "CircleIconButton light + dark")
 @Composable

@@ -52,6 +52,52 @@
     <string name="tips_still">Keep your face in the circle and stay fairly still.</string>
     <string name="tips_speak">Speak naturally — small movements are fine.</string>
 
+    <!-- Dates -->
+    <string name="date_today">Today</string>
+    <string name="date_yesterday">Yesterday</string>
+    <string name="date_line">%1$s • %2$s</string>
+
+    <!-- LibraryScreen (reference: left screen) -->
+    <string name="library_tagline">Your voice, your rhythm</string>
+    <string name="library_heading_grey">Send your</string>
+    <string name="library_heading_black">heartbeat</string>
+    <string name="library_heartbeats">Heartbeats</string>
+    <string name="library_beats">beats</string>
+    <string name="library_empty">Record your first Heartnote</string>
+    <string name="library_older">Earlier notes</string>
+    <string name="library_row_detail">%1$s • %2$s</string>
+    <string name="library_beat_count_cd">%1$d heartbeats</string>
+    <string name="cd_privacy">Privacy</string>
+    <string name="cd_all_notes">All notes</string>
+    <string name="cd_hold_latest">Hold the latest note</string>
+    <string name="cd_record">Record</string>
+    <string name="cd_share_latest">Share the latest note</string>
+    <string name="cd_about">About Heartnote</string>
+    <string name="cd_open_note">Open %1$s</string>
+    <string name="nav_record">Record</string>
+    <string name="share_chooser_title">Send your Heartnote</string>
+
+    <!-- PlaybackScreen (reference: right screen) -->
+    <string name="playback_title">Heartnote</string>
+    <string name="playback_heading_grey">Heartnote for</string>
+    <string name="playback_card_title">Heartbeat</string>
+    <string name="playback_card_subtitle">%1$s • %2$s</string>
+    <string name="playback_beats">beats</string>
+    <string name="playback_axis_seconds">%1$ds</string>
+    <string name="playback_position">%1$s / %2$s</string>
+    <string name="cd_export">Export and share</string>
+    <string name="cd_share">Share</string>
+    <string name="cd_delete">Delete</string>
+    <string name="cd_hold">Hold mode</string>
+    <string name="cd_rename">Rename</string>
+    <string name="cd_rename_heading">Note title. Double-tap to rename.</string>
+    <string name="cd_first_smile">Jump to the first smile</string>
+    <string name="cd_row_seek">Heartbeat from %1$d to %2$d seconds. Double-tap to play from here.</string>
+    <string name="rename_title">Who is this Heartnote for?</string>
+    <string name="rename_label">Name</string>
+    <string name="delete_title">Delete this Heartnote?</string>
+    <string name="delete_body">The voice, heartbeat and every file of this note are removed from this phone. Copies you already shared are not affected.</string>
+
     <!-- R6: the heartbeat is synthesized at the measured beat times. -->
     <string name="beat_label_trace">Timed to your measured pulse</string>
     <string name="beat_label_rate">Paced by your live pulse</string>

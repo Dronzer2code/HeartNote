@@ -66,7 +66,7 @@ import com.heartnote.app.ui.components.ProgressLine
 import com.heartnote.app.ui.components.ProgressStyle
 import com.heartnote.app.ui.components.SignalWaveform
 import com.heartnote.app.ui.components.SlideActionPill
-import com.heartnote.app.ui.playback.formatMs
+import com.heartnote.app.ui.formatDuration
 import com.heartnote.app.ui.theme.HnColors
 import com.heartnote.app.ui.theme.HnDims
 import com.heartnote.app.ui.theme.HnType
@@ -350,8 +350,8 @@ private fun StatusLines(state: RecordUiState) {
         RecordPhase.LOCK_ON -> R.string.record_preview_primary to stringResource(R.string.record_lockon_secondary)
         RecordPhase.RECORDING -> R.string.record_recording_primary to stringResource(
             R.string.record_recording_secondary,
-            formatMs(state.recordedMs),
-            formatMs(RecordViewModel.MAX_NOTE_DURATION_MS),
+            formatDuration(state.recordedMs),
+            formatDuration(RecordViewModel.MAX_NOTE_DURATION_MS),
         )
         RecordPhase.FLUSHING -> R.string.record_flushing_primary to stringResource(R.string.record_flushing_secondary)
         RecordPhase.PROCESSING, RecordPhase.SAVED ->
@@ -387,7 +387,7 @@ private fun ProgressBlock(state: RecordUiState, modifier: Modifier) {
         )
         RecordPhase.RECORDING -> ProgressLine(
             state.recordedMs.toFloat() / RecordViewModel.MAX_NOTE_DURATION_MS,
-            formatMs(state.recordedMs),
+            formatDuration(state.recordedMs),
             modifier,
         )
         RecordPhase.FLUSHING -> ProgressLine(1f, " ", modifier, ProgressStyle.PULSING)

@@ -7,7 +7,6 @@ import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import android.provider.Settings
 import com.heartnote.app.ui.beat.BeatEvent
 import com.heartnote.app.ui.beat.BeatKind
 
@@ -23,7 +22,6 @@ class HeartbeatHaptics(context: Context) {
             @Suppress("DEPRECATION")
             context.getSystemService(Vibrator::class.java)
         }
-    private val resolver = context.contentResolver
 
     private val primitive: Int? = when {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.R -> null
@@ -35,13 +33,12 @@ class HeartbeatHaptics(context: Context) {
         else -> null
     }
 
-    /** False when the device has no vibrator or media vibration is switched off. */
-    fun isAvailable(): Boolean {
-        if (!vibrator.hasVibrator()) return false
-        // Hidden-but-stable key on AOSP-based devices; absent → assume on.
-        val mediaIntensity = Settings.System.getInt(resolver, "media_vibration_intensity", -1)
-        return mediaIntensity != 0
-    }
+    /**
+     * False when the device has no vibrator. Whether the user switched media
+     * vibration off is not readable by apps (the setting is hidden and throws
+     * SecurityException from Android 12), so that case cannot be detected.
+     */
+    fun isAvailable(): Boolean = vibrator.hasVibrator()
 
     fun play(event: BeatEvent) {
         if (event.noteTimeMs == null) return

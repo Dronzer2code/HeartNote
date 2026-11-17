@@ -46,6 +46,20 @@ class NoteRepository(filesDir: File) {
             .mapNotNull { readMeta(it.name) }
             .sortedByDescending { it.createdAt }
 
+    /**
+     * Notes whose processing never finished (app killed during Processing, or
+     * the Failed screen was left): raw files are kept for retry (PROCESS_FLOW).
+     */
+    fun unfinished(): List<String> =
+        (notesRoot.listFiles() ?: emptyArray())
+            .filter {
+                it.isDirectory &&
+                    File(it, "voice.wav").exists() &&
+                    File(it, "signals.json").exists() &&
+                    !File(it, "heartnote.m4a").exists()
+            }
+            .map { it.name }
+
     fun rename(id: String, title: String): NoteMeta? {
         val meta = readMeta(id) ?: return null
         val renamed = meta.copy(title = title.trim().ifEmpty { meta.title })

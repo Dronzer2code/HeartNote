@@ -85,6 +85,7 @@ heartnote/
 - `VIBRATE`, `INTERNET`: normal permissions, granted at install.
 - Register a `FileProvider` (`${applicationId}.fileprovider`) for F9 sharing.
 - No storage permissions. All files live in `context.filesDir`.
+- `android:allowBackup="false"` and `data_extraction_rules.xml` exclude everything from cloud backup and device transfer (FIXED 2026-11-17: the template had backup on, which would have copied notes to the user's Google Drive, contradicting R4 and the consent copy).
 - No foreground service. Recording and playback happen only while the app is visible.
 
 ## API KEY HANDLING (C4)
@@ -213,6 +214,7 @@ Silent microphone (found 2026-11-17): the developer's first 60 s device recordin
 - Otherwise: `VibrationEffect.createWaveform(longArrayOf(0, 40, dubDelayMs − 40, 25), intArrayOf(0, 255, 0, 140), -1)`; if `!hasAmplitudeControl()` use `createOneShot(40, DEFAULT_AMPLITUDE)`.
 - API 33+: vibrate with `VibrationAttributes.createForUsage(VibrationAttributes.USAGE_MEDIA)`.
 - If system vibration is disabled, playback screen shows: "Turn on vibration to feel the heartbeat."
+  - IMPLEMENTED as `!vibrator.hasVibrator()` only (2026-11-17). The user's media-vibration switch is a hidden setting; reading it throws `SecurityException` on Android 12+ (found on the emulator), so "vibration switched off" cannot be detected by an app.
 
 Sync: a coroutine polls `ExoPlayer.currentPosition` every 10 ms and fires each beat whose `tMs` was crossed since the previous poll. Seeking resets the beat cursor.
 
@@ -221,6 +223,9 @@ Sync: a coroutine polls `ExoPlayer.currentPosition` every 10 ms and fires each b
 - Input: mixed PCM16 48 kHz mono.
 - `MediaCodec` encoder `audio/mp4a-latm`, AAC-LC, 128 kbps → `MediaMuxer` `MUXER_OUTPUT_MPEG_4`.
 - Output: `notes/<id>/heartnote.m4a`.
+- One AAC frame (1,024 samples = 2,048 bytes) per `queueInputBuffer`. FOUND 2026-11-17 on the emulator: `c2.android.aac.encoder` advertises `input.buffers.max-size = 2048` and fails with UNKNOWN_ERROR after ~2 s of audio when given full 16 KB buffers. Written to `heartnote.m4a.part`, renamed on success, deleted on failure.
+- Verified on the emulator (Android 16): the developer's 60 s recording exports to a 980 KB `.m4a`, plays in ExoPlayer, and fires ~2 haptic events per beat.
+- Unfinished notes (raw `voice.wav` + `signals.json`, no `heartnote.m4a` — app killed during Processing, or the Failed screen was left) are completed by the Library on its next start, one attempt per note per process.
 - Generated at save time (F6) so playback and share use the same file.
 - `ShareHelper.kt`: `FileProvider.getUriForFile`, `Intent.ACTION_SEND`, type `audio/mp4`, `FLAG_GRANT_READ_URI_PERMISSION`.
 
