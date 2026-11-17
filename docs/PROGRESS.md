@@ -33,3 +33,13 @@ Remaining: device verification of save → playback → haptics; Phases B–F.
 Known issues:
 - **The developer's 60 s recording has an all-zero voice.wav.** Android was silencing the mic (likely the Microphone access privacy toggle, or another app holding the mic). The app now detects this within 2 s and tells the user; the cause on the test phone is still to be confirmed.
 - Not yet verified on device: AAC export, playback sync, haptics, heartbeat audibility on the phone speaker (`SPEAKER_HARMONICS`).
+
+## 2026-11-17 — Phase B: design system
+
+Done:
+- `HeartnoteTokens.kt` (HnColors / HnType / HnDims from DESIGN.md), Material theme mapped onto the tokens, window background `LightBg`.
+- Inter 400/500/600 (latin subset, OFL) in `res/font`; Lucide icons (ISC) as `HeartnoteIcons`; both licenses in `assets/licenses/`.
+- Components with `@Preview`s: `DotMatrixNumber`, `DotBarChart`, `TwoToneHeading`, `CircleIconButton`, `ArcNavBar`, `SlideActionPill`, `ProgressLine`. All previews rendered through Android Studio (`android studio render-compose-preview`) and checked against `ref-screens.webp`.
+
+Known issues:
+- This Android CLI version has no `android preview`; previews are rendered via `android studio render-compose-preview` (needs Studio open on the project).

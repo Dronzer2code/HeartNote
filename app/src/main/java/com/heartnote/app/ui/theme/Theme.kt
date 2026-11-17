@@ -1,58 +1,48 @@
 package com.heartnote.app.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+/**
+ * Material defaults mapped onto Heartnote tokens, so stock components
+ * (dialogs, sheets, text fields) match. Screens use HnColors/HnType directly.
+ */
+private val HeartnoteColorScheme = lightColorScheme(
+    primary = HnColors.InkBlack,
+    onPrimary = HnColors.CardWhite,
+    secondary = HnColors.DotRed,
+    onSecondary = HnColors.CardWhite,
+    background = HnColors.LightBg,
+    onBackground = HnColors.InkBlack,
+    surface = HnColors.CardWhite,
+    onSurface = HnColors.InkBlack,
+    surfaceContainerLow = HnColors.CardWhite,
+    surfaceContainer = HnColors.CardWhite,
+    surfaceContainerHigh = HnColors.CardWhite,
+    onSurfaceVariant = HnColors.InkGrey,
+    error = HnColors.DotRed,
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
-)
+private val HeartnoteTypography = Typography().run {
+    copy(
+        bodyLarge = bodyLarge.copy(fontFamily = Inter),
+        bodyMedium = bodyMedium.copy(fontFamily = Inter),
+        bodySmall = bodySmall.copy(fontFamily = Inter),
+        titleLarge = titleLarge.copy(fontFamily = Inter),
+        titleMedium = titleMedium.copy(fontFamily = Inter),
+        labelLarge = labelLarge.copy(fontFamily = Inter),
+        labelMedium = labelMedium.copy(fontFamily = Inter),
+        headlineSmall = headlineSmall.copy(fontFamily = Inter),
+    )
+}
 
 @Composable
-fun HeartnoteTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
+fun HeartnoteTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
+        colorScheme = HeartnoteColorScheme,
+        typography = HeartnoteTypography,
+        content = content,
     )
 }
