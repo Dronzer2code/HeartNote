@@ -14,3 +14,8 @@
 .cxx
 local.properties
 spike.txt
+testdata/private/
+# third-party design references (not ours to redistribute)
+docs/design/ref-*
+/.claude/settings.local.json
+/.idea/deploymentTargetSelector.xml

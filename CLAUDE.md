@@ -16,6 +16,8 @@ Heartnote is a native Android app (Kotlin, Jetpack Compose) for the DEV Presage 
 | `docs/MVP.md` | Choosing what to build next; checking the day plan and definition of done. |
 | `docs/TRD.md` | Implementing anything; exact APIs, file names, algorithms, unresolved questions. |
 | `docs/PROCESS_FLOW.md` | Implementing screen state, pipelines, or data lifecycle. |
+| `docs/design/DESIGN.md` | Any UI work: tokens, components, screens, particle maths, beat sync. Use the `heartnote-ui` skill. |
+| `docs/PROGRESS.md` | Start of every session: what is done, remaining, known issues. |
 
 ## RULES
 
