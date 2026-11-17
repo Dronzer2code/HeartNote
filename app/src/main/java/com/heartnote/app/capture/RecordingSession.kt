@@ -40,6 +40,8 @@ class RecordingSession(private val repository: NoteRepository) {
 
     val audioStartEpochMs: Long get() = audio.audioStartEpochMs
     val audioDurationMs: Long get() = audio.durationMs
+    val audioPeakAbs: Int get() = audio.peakAbs
+    val createdAt: Long = System.currentTimeMillis()
 
     fun startAudio(scope: CoroutineScope, onError: (Throwable) -> Unit) {
         audio.start(scope, repository.voiceFile(noteId), onError)

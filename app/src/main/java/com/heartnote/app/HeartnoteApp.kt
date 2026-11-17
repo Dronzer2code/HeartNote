@@ -1,12 +1,18 @@
 package com.heartnote.app
 
 import android.app.Application
+import com.heartnote.app.haptics.HeartbeatHaptics
+import com.heartnote.app.ui.beat.BeatBus
 import com.presagetech.smartspectra.CameraSelection
 import com.presagetech.smartspectra.SmartSpectraConfig
 import com.presagetech.smartspectra.SmartSpectraSdk
 import com.presagetech.smartspectra.proto.MetricTypesProto.MetricType
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 
 class HeartnoteApp : Application() {
+    private val appScope = MainScope()
+
     override fun onCreate() {
         super.onCreate()
         val sdk = SmartSpectraSdk.shared
@@ -18,5 +24,10 @@ class HeartnoteApp : Application() {
                 SmartSpectraConfig.cardioMetrics +
                 listOf(MetricType.EXPRESSIONS, MetricType.TALKING)
         sdk.useCamera(CameraSelection.Front)
+
+        // The only haptics subscriber: one vibration per playback beat event,
+        // however many screens are observing the bus. Live beats never vibrate.
+        val haptics = HeartbeatHaptics(this)
+        appScope.launch { BeatBus.events.collect { haptics.play(it) } }
     }
 }

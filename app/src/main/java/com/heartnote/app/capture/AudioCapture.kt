@@ -28,6 +28,15 @@ class AudioCapture {
     @Volatile
     private var stopping = false
 
+    /**
+     * Largest absolute sample so far. Stays 0 when Android silences the mic
+     * (privacy toggle off, or another app holds it): AudioRecord then delivers
+     * digital silence instead of an error.
+     */
+    @Volatile
+    var peakAbs: Int = 0
+        private set
+
     private var recorder: AudioRecord? = null
     private var writerJob: Job? = null
 
@@ -60,6 +69,7 @@ class AudioCapture {
                             }
                             raf.write(buffer, 0, read)
                             bytesWritten += read
+                            if (peakAbs == 0) peakAbs = bufferPeak(buffer, read)
                         } else if (read < 0) {
                             break
                         }
@@ -81,6 +91,18 @@ class AudioCapture {
         recorder?.release()
         recorder = null
         return durationMs
+    }
+
+    private fun bufferPeak(buffer: ByteArray, length: Int): Int {
+        var peak = 0
+        var i = 0
+        while (i + 1 < length) {
+            val sample = (buffer[i].toInt() and 0xFF) or (buffer[i + 1].toInt() shl 8)
+            val magnitude = kotlin.math.abs(sample.toShort().toInt())
+            if (magnitude > peak) peak = magnitude
+            i += 2
+        }
+        return peak
     }
 
     private fun writeWavHeader(raf: RandomAccessFile, dataBytes: Long) {

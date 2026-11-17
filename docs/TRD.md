@@ -61,7 +61,10 @@ heartnote/
 │       ├── haptics/HeartbeatHaptics.kt  # per-beat vibration
 │       ├── data/
 │       │   ├── Heartnote.kt             # data classes
-│       │   └── NoteRepository.kt        # file storage, list, delete
+│       │   ├── NoteRepository.kt        # file storage, list, delete
+│       │   └── NoteProcessor.kt         # F6 processing pipeline (PROCESS_FLOW steps 1–8)
+│       ├── ui/beat/BeatBus.kt           # SharedFlow<BeatEvent> (DESIGN.md § BEAT SYNC)
+│       ├── ui/playback/NotePlayer.kt    # ExoPlayer + 10 ms beat cursor, shared with HoldScreen
 │       └── share/ShareHelper.kt         # FileProvider + ACTION_SEND
 ├── app/src/main/res/xml/file_paths.xml  # FileProvider paths
 ├── docs/ (PRD.md, MVP.md, TRD.md, PROCESS_FLOW.md)
@@ -175,8 +178,11 @@ Algorithm (REPLACED 2026-11-16 after S3 answered — SDK timestamps are Unix epo
 Primary source: `arterialPressureTraceList`.
 1. Resample to uniform 30 Hz (linear interpolation).
 2. Detrend: subtract 1.0 s centered moving average.
-3. Peak detection: local maxima, minimum distance 333 ms (≤180 BPM), prominence ≥ 0.3 × rolling std (tunable).
-4. Reject inter-beat intervals outside 333–1500 ms (40–180 BPM). Fill gaps using the rate fallback for that segment.
+3. Peak detection: local maxima, minimum distance 333 ms (≤180 BPM), prominence ≥ 0.3 × rolling 4 s std (tunable). Peaks lower than 0.3 × the 80th-percentile peak height within ±3 s are dropped (secondary/dicrotic waves; the median is NOT a safe reference because secondary waves can be half of all candidates).
+4. Trace usability: the trace is used only if ≥ 60% of beat intervals are within ±35% of the interval implied by the (median-filtered) pulse rate; otherwise `beatSource = "rate"`. Pure noise fails this check.
+5. A peak arriving sooner than 0.55 × the expected interval is a double detection and is dropped. An interval longer than min(1500 ms, 1.6 × expected) is a missed beat: the missing beats (round(gap / expected) − 1) are inserted evenly from the rate fallback; same for the note's start and end. Any inserted beat inside the note → `beatSource = "mixed"`.
+
+Validated 2026-11-17: synthetic fixture (unit tests, `BeatExtractorTest`) detects every beat within ±40 ms incl. jitter, drift, noise and dicrotic waves. Developer's 60 s device recording: 85 beats = 84.6 BPM vs 83.7 BPM mean pulse rate, all intervals 518–896 ms. `BeatExtractor.detectBeats()` (steps 1–3 + double-detection removal, no gap filling) is reused live by `LiveBeatScheduler`.
 
 Fallback source: `pulseRateList`.
 - Apply a 5-sample median filter to pulse rate values first (S5: ~20 BPM jumps observed around face movement/loss).
@@ -191,13 +197,17 @@ Each note stores `beatSource = "trace" | "rate" | "mixed"`. UI label (R6):
 Per beat at time `t`, with interval `RR` to the next beat:
 - **Lub**: 55 Hz sine × exponential decay (τ = 40 ms), duration 120 ms, gain 1.0.
 - **Dub**: 70 Hz sine × exponential decay (τ = 30 ms), duration 90 ms, gain 0.6, at `t + clamp(0.3 × RR, 200 ms, 350 ms)`.
-- Low-pass 150 Hz. Output 48 kHz mono float.
+- Low-pass 150 Hz (one-pole). Output 48 kHz mono float.
+- DEVIATION (2026-11-17, `HeartbeatSynth.SPEAKER_HARMONICS`): each beat also carries its 2nd–4th harmonics (gains 0.5, 0.3, 0.15, peak-normalised), because phone speakers reproduce little below ~200 Hz and a pure 55/70 Hz sine is near-inaudible on them; the harmonics let the ear infer the low fundamental. Fundamentals, envelopes and timing are unchanged. MUST be checked by ear on the test device; set the flag to `false` for the pure TRD sound.
 
-`Mixer.kt`: `mixed = voice + heartbeat × 0.35` (≈ −9 dB, tunable), soft-clip to [−1, 1], convert to PCM16.
+`Mixer.kt`: `mixed = voice + heartbeat × 0.35` (≈ −9 dB, tunable), soft-clip (linear to 0.9, tanh above) to [−1, 1], convert to PCM16. The voice is first normalised so its 99.9th-percentile level is 0.7 (gain 1–8×, i.e. at most +18 dB) because phone mic levels vary; a silent voice is left untouched.
+
+Silent microphone (found 2026-11-17): the developer's first 60 s device recording produced an all-zero `voice.wav` (2,892,480 samples, every one 0). Android delivers digital silence, not an error, when the mic privacy toggle is off or another app holds the mic. `AudioCapture.peakAbs` tracks the loudest sample; RecordViewModel discards the recording after 2 s of exact silence and shows `record_error_mic_silent`. Root cause on the test device: UNKNOWN until the phone is reconnected.
 
 ## HAPTICS (`haptics/HeartbeatHaptics.kt`)
 
 - Obtain `Vibrator` via `VibratorManager.defaultVibrator` (API 31+) or `getSystemService(Vibrator::class.java)`.
+- IMPLEMENTED (2026-11-17): one effect per `BeatBus` event — LUB = primitive at 1.0, DUB = primitive at 0.5 — instead of one composed lub+dub effect, so the dub vibration fires on the same 10 ms poll that crosses the dub's time in the audio. A single app-wide subscriber in `HeartnoteApp` plays them, and only for events with a `noteTimeMs` (playback); live recording beats carry `null` and never vibrate.
 - API 31+ and `areAllPrimitivesSupported(PRIMITIVE_THUD)`: `VibrationEffect.startComposition().addPrimitive(PRIMITIVE_THUD, 1.0f).addPrimitive(PRIMITIVE_THUD, 0.5f, dubDelayMs).compose()`.
 - API 30 or THUD unsupported but `PRIMITIVE_CLICK` supported: same composition using `PRIMITIVE_CLICK`.
 - Otherwise: `VibrationEffect.createWaveform(longArrayOf(0, 40, dubDelayMs − 40, 25), intArrayOf(0, 255, 0, 140), -1)`; if `!hasAmplitudeControl()` use `createOneShot(40, DEFAULT_AMPLITUDE)`.
@@ -223,7 +233,7 @@ Storage root: `context.filesDir/notes/<id>/` where `<id>` is a UUID.
 | `voice.wav` | Raw voice. Deleted after successful export (DECISION). |
 | `heartnote.m4a` | Mixed voice + heartbeat. Playback + share source. |
 | `signals.json` | Signal track (schema below). |
-| `meta.json` | Title, createdAt, durationMs. |
+| `meta.json` | id, title, createdAt, durationMs, plus beatCount, beatSource, smileCount so the Library never parses `signals.json`. Default title `you` (heading reads "Heartnote for you"). |
 
 ```json
 {

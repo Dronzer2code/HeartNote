@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,10 +47,20 @@ private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA, Manifest.
 
 /** F3 (lock-on), F4 (record), F5 (live signals). F2 confirm gate arrives day 5. */
 @Composable
-fun RecordScreen(viewModel: RecordViewModel = viewModel()) {
+fun RecordScreen(
+    onNoteSaved: (String) -> Unit,
+    viewModel: RecordViewModel = viewModel(),
+) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(uiState.savedNoteId) {
+        uiState.savedNoteId?.let { id ->
+            viewModel.onSavedNoteShown()
+            onNoteSaved(id)
+        }
+    }
 
     fun allGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
@@ -196,6 +207,13 @@ fun RecordScreen(viewModel: RecordViewModel = viewModel()) {
             RecordPhase.FLUSHING -> Button(onClick = {}, enabled = false) {
                 Text("Finishing your heartbeat…")
             }
+            RecordPhase.PROCESSING -> Button(onClick = {}, enabled = false) {
+                Text("Making your Heartnote…")
+            }
+            RecordPhase.FAILED -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = viewModel::deleteFailedNote) { Text("Delete") }
+                Button(onClick = viewModel::retryProcessing) { Text("Retry") }
+            }
             RecordPhase.SAVED -> Unit
         }
     }
@@ -236,6 +254,8 @@ private fun statusLine(state: RecordUiState): String {
         RecordPhase.LOCK_ON -> "Hold still — finding your pulse…"
         RecordPhase.RECORDING -> "Recording — speak naturally, keep your face steady"
         RecordPhase.FLUSHING -> "Finishing your heartbeat…"
+        RecordPhase.PROCESSING -> "Making your Heartnote…"
+        RecordPhase.FAILED -> "Could not finish this note"
         RecordPhase.SAVED -> ""
     }
     return state.validationHint?.let { "$base\n$it" } ?: base

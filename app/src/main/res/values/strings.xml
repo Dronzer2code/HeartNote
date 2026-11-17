@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">Heartnote</string>
+
+    <!-- Default note title; reads as "Heartnote for you" on the playback heading. -->
+    <string name="default_note_title">you</string>
+
+    <string name="record_error_mic_silent">Heartnote can\'t hear your microphone. Check that microphone access is on (Settings › Privacy) and that no other app is recording.</string>
+
+    <!-- R6: the heartbeat is synthesized at the measured beat times. -->
+    <string name="beat_label_trace">Timed to your measured pulse</string>
+    <string name="beat_label_rate">Paced by your live pulse</string>
+    <string name="playback_play">Play</string>
+    <string name="playback_pause">Pause</string>
+    <string name="playback_load_failed">This note could not be opened.</string>
+    <string name="playback_vibration_off">Turn on vibration to feel the heartbeat.</string>
+    <string name="playback_bluetooth_hint">Feels best on the phone speaker</string>
 </resources>

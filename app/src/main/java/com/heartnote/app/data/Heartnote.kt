@@ -2,6 +2,18 @@ package com.heartnote.app.data
 
 import kotlinx.serialization.Serializable
 
+/** notes/<id>/meta.json (TRD § DATA MODEL), plus summary fields the Library needs. */
+@Serializable
+data class NoteMeta(
+    val id: String,
+    val title: String,
+    val createdAt: Long,
+    val durationMs: Long,
+    val beatCount: Int = 0,
+    val beatSource: String = "rate",
+    val smileCount: Int = 0,
+)
+
 /** Schema of notes/<id>/signals.json (TRD § DATA MODEL). */
 @Serializable
 data class SignalsFile(

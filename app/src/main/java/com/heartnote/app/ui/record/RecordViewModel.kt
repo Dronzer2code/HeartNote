@@ -7,7 +7,9 @@ import androidx.camera.core.Preview
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.Observer
 import androidx.lifecycle.viewModelScope
+import com.heartnote.app.R
 import com.heartnote.app.capture.RecordingSession
+import com.heartnote.app.data.NoteProcessor
 import com.heartnote.app.capture.SignalCapture
 import com.heartnote.app.data.NoteRepository
 import com.presagetech.smartspectra.ProcessingStatus
@@ -24,7 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** PROCESS_FLOW § RECORD SCREEN STATE MACHINE (Confirm = F2 arrives day 5). */
-enum class RecordPhase { PREVIEW, LOCK_ON, RECORDING, FLUSHING, SAVED }
+enum class RecordPhase { PREVIEW, LOCK_ON, RECORDING, FLUSHING, PROCESSING, FAILED, SAVED }
 
 data class RecordUiState(
     val phase: RecordPhase = RecordPhase.PREVIEW,
@@ -44,6 +46,7 @@ data class RecordUiState(
 class RecordViewModel(application: Application) : AndroidViewModel(application) {
     private val capture = SignalCapture()
     private val repository = NoteRepository(application.filesDir)
+    private val processor = NoteProcessor(repository)
 
     private val _uiState = MutableStateFlow(RecordUiState())
     val uiState: StateFlow<RecordUiState> = _uiState
@@ -214,12 +217,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             delay(SDK_TAIL_FLUSH_MS) // metrics keep flowing into the session meanwhile
             runCatching { capture.stop() }
             runCatching { withContext(Dispatchers.IO) { s.writeSignals(durationMs) } }
-                .onSuccess {
-                    session = null
-                    _uiState.update {
-                        it.copy(phase = RecordPhase.SAVED, savedNoteId = s.noteId, savedDurationMs = durationMs)
-                    }
-                }
+                .onSuccess { processNote(s, durationMs) }
                 .onFailure { e ->
                     Log.e(TAG, "saving signals failed", e)
                     s.discard()
@@ -230,6 +228,68 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                     startPreview()
                 }
         }
+    }
+
+    /** Flushing → Processing (F6 pipeline) → Saved, or Failed with Retry/Delete. */
+    private suspend fun processNote(s: RecordingSession, durationMs: Long) {
+        _uiState.update { it.copy(phase = RecordPhase.PROCESSING) }
+        val defaultTitle = getApplication<Application>().getString(R.string.default_note_title)
+        runCatching { processor.process(s.noteId, defaultTitle, s.createdAt) }
+            .onSuccess {
+                session = null
+                _uiState.update {
+                    it.copy(phase = RecordPhase.SAVED, savedNoteId = s.noteId, savedDurationMs = durationMs)
+                }
+            }
+            .onFailure { e ->
+                Log.e(TAG, "processing failed", e)
+                _uiState.update { it.copy(phase = RecordPhase.FAILED) }
+            }
+    }
+
+    /** PROCESS_FLOW: Retry re-runs from step 5 (render); signals and meta are already written. */
+    fun retryProcessing() {
+        val s = session ?: return
+        if (_uiState.value.phase != RecordPhase.FAILED) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(phase = RecordPhase.PROCESSING) }
+            val rendered = runCatching {
+                if (repository.readMeta(s.noteId) == null) {
+                    processor.process(
+                        s.noteId,
+                        getApplication<Application>().getString(R.string.default_note_title),
+                        s.createdAt,
+                    )
+                } else {
+                    processor.render(s.noteId)
+                }
+            }
+            if (rendered.isSuccess) {
+                session = null
+                _uiState.update { it.copy(phase = RecordPhase.SAVED, savedNoteId = s.noteId) }
+            } else {
+                Log.e(TAG, "retry failed", rendered.exceptionOrNull())
+                _uiState.update { it.copy(phase = RecordPhase.FAILED) }
+            }
+        }
+    }
+
+    fun deleteFailedNote() {
+        if (_uiState.value.phase != RecordPhase.FAILED) return
+        val s = session
+        session = null
+        viewModelScope.launch {
+            s?.let { withContext(Dispatchers.IO) { repository.delete(it.noteId) } }
+            _uiState.update { it.copy(phase = RecordPhase.PREVIEW) }
+            startPreview()
+        }
+    }
+
+    /** Called once the screen has navigated to the saved note. */
+    fun onSavedNoteShown() {
+        if (_uiState.value.phase != RecordPhase.SAVED) return
+        resetSignalBuffers()
+        _uiState.update { it.copy(phase = RecordPhase.PREVIEW, savedNoteId = null, savedDurationMs = null, recordedSeconds = 0) }
     }
 
     /** Back to Preview, deleting the note dir. The SDK keeps running. */
@@ -261,7 +321,12 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                         discardSession("Couldn't find your pulse. Move to better light and try again.")
                     }
                     RecordPhase.RECORDING -> {
-                        if (now - lastFaceAtMs > FACE_LOST_DISCARD_MS) {
+                        val heard = session?.audioPeakAbs ?: 0
+                        if ((session?.audioDurationMs ?: 0L) >= SILENT_MIC_CHECK_MS && heard == 0) {
+                            discardSession(
+                                getApplication<Application>().getString(R.string.record_error_mic_silent),
+                            )
+                        } else if (now - lastFaceAtMs > FACE_LOST_DISCARD_MS) {
                             discardSession("Face lost — recording discarded. Try again.")
                         } else if ((session?.audioDurationMs ?: 0L) >= MAX_NOTE_DURATION_MS) {
                             finishRecording()
@@ -294,7 +359,8 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                 viewModelScope.launch { runCatching { capture.stop() } }
             }
             RecordPhase.PREVIEW -> viewModelScope.launch { runCatching { capture.stop() } }
-            RecordPhase.FLUSHING, RecordPhase.SAVED -> Unit // flush finishes within 2.5 s
+            // Flush and processing finish on their own; their result survives in the ViewModel.
+            RecordPhase.FLUSHING, RecordPhase.PROCESSING, RecordPhase.FAILED, RecordPhase.SAVED -> Unit
         }
     }
 
@@ -315,5 +381,6 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         private const val LOCK_ON_TIMEOUT_MS = 20_000L
         private const val MAX_NOTE_DURATION_MS = 60_000L
         private const val SDK_TAIL_FLUSH_MS = 2500L
+        private const val SILENT_MIC_CHECK_MS = 2000L
     }
 }

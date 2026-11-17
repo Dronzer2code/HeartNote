@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.heartnote.app.ui.record.RecordScreen
+import com.heartnote.app.ui.nav.HeartnoteNavGraph
 import com.heartnote.app.ui.theme.HeartnoteTheme
 
 class MainActivity : ComponentActivity() {
@@ -13,7 +13,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             HeartnoteTheme {
-                RecordScreen()
+                HeartnoteNavGraph()
             }
         }
     }
