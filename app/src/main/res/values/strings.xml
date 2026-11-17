@@ -98,6 +98,47 @@
     <string name="delete_title">Delete this Heartnote?</string>
     <string name="delete_body">The voice, heartbeat and every file of this note are removed from this phone. Copies you already shared are not affected.</string>
 
+    <!-- ConsentScreen (F1) -->
+    <string name="consent_heading_grey">Your heartbeat</string>
+    <string name="consent_heading_black">stays yours.</string>
+    <string name="consent_camera">The camera reads your pulse from your face. No video is ever saved.</string>
+    <string name="consent_phone">Notes stay on this phone. Nothing is uploaded by Heartnote.</string>
+    <string name="consent_delete">Delete any note at any time.</string>
+    <string name="consent_not_medical">Heartnote is not a medical device.</string>
+    <string name="consent_accept">I understand</string>
+    <string name="consent_decline">Not now</string>
+    <string name="consent_declined">Heartnote can\'t record without your OK. You can accept whenever you\'re ready.</string>
+    <string name="consent_permissions_denied">Camera or microphone access was not allowed. You can turn it on in Settings › Apps › Heartnote › Permissions.</string>
+
+    <!-- Privacy sheet (content source: TRD § CONSENT AND DATA HANDLING) -->
+    <string name="privacy_title">Privacy</string>
+    <string name="privacy_not_stored_title">Never stored</string>
+    <string name="privacy_not_stored">Camera frames and video. The camera is only used while you record, to read your pulse, breathing and expressions.</string>
+    <string name="privacy_stored_title">Stored on this phone only</string>
+    <string name="privacy_stored">Your voice, the Heartnote audio file, beat times, breathing curve, pulse-rate samples and smile moments.</string>
+    <string name="privacy_sharing_title">Sharing</string>
+    <string name="privacy_sharing">Only when you tap Share, and only the audio file. Signal data is never shared.</string>
+    <string name="privacy_delete_title">Deleting</string>
+    <string name="privacy_delete">Delete removes every file of a note. Uninstalling Heartnote removes all notes. Notes are not included in phone backups.</string>
+    <string name="privacy_servers_title">Servers</string>
+    <string name="privacy_servers">Heartnote has no servers and sends no data anywhere. The Presage SmartSpectra SDK that reads your pulse uses the internet to check the app\'s licence key; see Presage\'s privacy policy for what it sends.</string>
+
+    <!-- About sheet -->
+    <string name="about_title">About Heartnote</string>
+    <string name="about_body">Heartnote records your voice while the front camera reads your pulse, then plays it back with a heartbeat sound and vibration timed to the beats you had while speaking. The heartbeat is synthesized at your measured beat times; it is not a stethoscope recording.</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_credits_title">Credits</string>
+    <string name="about_credit_presage">Pulse and breathing: Presage SmartSpectra SDK</string>
+    <string name="about_credit_inter">Typeface: Inter (SIL Open Font License)</string>
+    <string name="about_credit_lucide">Icons: Lucide (ISC License)</string>
+    <string name="about_credit_design">Interface inspired by a community concept design (credited in the README).</string>
+
+    <!-- HoldScreen (F11) -->
+    <string name="hold_subtitle">Hold your phone close</string>
+    <string name="hold_card_title">Heartbeat</string>
+    <string name="hold_replay">Replay</string>
+    <string name="hold_beat_count_cd">%1$d heartbeats played</string>
+
     <!-- R6: the heartbeat is synthesized at the measured beat times. -->
     <string name="beat_label_trace">Timed to your measured pulse</string>
     <string name="beat_label_rate">Paced by your live pulse</string>

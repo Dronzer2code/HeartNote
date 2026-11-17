@@ -71,3 +71,18 @@ Remaining: sound + vibration + dot flash sync by ear/hand on the phone; Phase E�
 Known issues:
 - Cold start took 12.7 s on the emulator, but the whole emulator was dropping frames; re-measure on the phone. If slow there, defer SDK configuration in `HeartnoteApp` until RecordScreen.
 - Studio preview rendering broke after a component signature change (stale fast-preview classes); screens were checked on the emulator instead.
+
+## 2026-11-17 — Phase E: consent, navigation, Hold
+
+Done:
+- ConsentScreen (F1) on first launch; camera + mic requested only after "I understand"; "Not now" stays with an explanation. Consent stored in SharedPreferences.
+- Privacy sheet (TRD § CONSENT AND DATA HANDLING in plain words) and About sheet (credits, version) from the Library nav and shield button.
+- Navigation: Consent → Library → Record → Playback → Hold, shared-axis X transitions (300 ms).
+- `ParticleHeart` on the shared `ParticleEngine` (implicit-surface point cloud, lub/dub scale + ripples, ±25° sway, clamped drag with spring-back, reduced motion) + geometry unit tests.
+- HoldScreen to `ref-heart.png` (radial glow with 15% lub flash, translucent back button, centred title, floating card with 2 s bpTrace and counting beats, dark pill nav), immersive + keep-screen-on, auto-plays with the same sync and haptics.
+- Verified on the emulator: first launch → consent → Library; Hold plays, counts beats, heart at 44–51 fps on the (overloaded) emulator.
+
+Remaining: Phase F; device checks for all animation and sync.
+
+Known issues:
+- Privacy copy says the SDK uses the internet for its licence key and points to Presage's policy; SDK telemetry details are still UNKNOWN (`sdk.config.enableTelemetry` exists — decide whether to set it false after reading Presage's docs).

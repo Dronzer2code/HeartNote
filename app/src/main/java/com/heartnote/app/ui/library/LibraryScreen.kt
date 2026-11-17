@@ -230,11 +230,13 @@ private fun LatestCard(note: NoteMeta?, columns: FloatArray?, onOpen: () -> Unit
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    note?.let { formatNoteDate(context, it.createdAt) } ?: stringResource(R.string.library_empty),
-                    style = HnType.cardSubtitle,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
+                if (note != null) {
+                    Text(
+                        formatNoteDate(context, note.createdAt),
+                        style = HnType.cardSubtitle,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
             }
             CircleIconButton(HeartnoteIcons.History, stringResource(R.string.cd_all_notes), onHistory, outlined = true, enabled = note != null)
         }
