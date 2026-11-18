@@ -126,6 +126,11 @@ class Ripples(private val capacity: Int = 16) {
         return total
     }
 
+    fun clear() {
+        next = 0
+        size = 0
+    }
+
     /** Seconds since the newest ripple of [beatKind] started, or +inf. */
     fun sinceLast(beatKind: BeatKind, tSec: Float): Float {
         var best = Float.POSITIVE_INFINITY
@@ -229,24 +234,67 @@ class ParticleEngine(private val model: ParticleModel) {
 
     /** Back-to-front, one drawPoints call per depth bucket. */
     fun draw(scope: DrawScope, color: Color, alpha: Float = 1f) {
-        val argb = color.toArgb()
         val density = scope.density
-        scope.drawIntoCanvas { canvas ->
-            val native = canvas.nativeCanvas
-            for (b in 0 until BUCKETS) {
-                val count = bucketCounts[b]
-                if (count == 0) continue
-                val t = b / (BUCKETS - 1f)
-                paint.strokeWidth = (SIZE_BACK_DP + (SIZE_FRONT_DP - SIZE_BACK_DP) * t) * density
-                paint.color = argb
-                paint.alpha = ((ALPHA_BACK + (ALPHA_FRONT - ALPHA_BACK) * t) * alpha * 255).toInt()
-                native.drawPoints(buckets[b], 0, count * 2, paint)
-            }
+        scope.drawIntoCanvas { canvas -> drawTo(canvas.nativeCanvas, color.toArgb(), density, alpha) }
+    }
+
+    fun drawTo(native: android.graphics.Canvas, argb: Int, density: Float, alpha: Float = 1f) {
+        for (b in 0 until BUCKETS) {
+            val count = bucketCounts[b]
+            if (count == 0) continue
+            val t = b / (BUCKETS - 1f)
+            paint.strokeWidth = (SIZE_BACK_DP + (SIZE_FRONT_DP - SIZE_BACK_DP) * t) * density
+            paint.color = argb
+            paint.alpha = ((ALPHA_BACK + (ALPHA_FRONT - ALPHA_BACK) * t) * alpha * 255).toInt()
+            native.drawPoints(buckets[b], 0, count * 2, paint)
         }
+    }
+
+    /**
+     * SHARE_AND_IMPORT.md § VIDEO EXPORT: deterministic frame at [timeMs].
+     * Ripples and beat scale come from [beatsMs] relative to [timeMs] (not
+     * BeatBus or the wall clock), so the same note always renders the same
+     * frames. Live screens keep using [beat] + [step].
+     */
+    fun renderAt(
+        timeMs: Long,
+        beatsMs: LongArray,
+        canvas: android.graphics.Canvas,
+        argb: Int,
+        density: Float,
+        frameDtSec: Float = 1f / 30f,
+    ) {
+        prepareAt(timeMs, beatsMs, frameDtSec)
+        drawTo(canvas, argb, density)
+    }
+
+    /** Deterministic projection for [timeMs] (the drawing-free half of [renderAt]). */
+    fun prepareAt(timeMs: Long, beatsMs: LongArray, frameDtSec: Float = 1f / 30f) {
+        val tSec = timeMs / 1000f
+        ripples.clear()
+        val from = timeMs - RIPPLE_WINDOW_MS
+        for (i in beatsMs.indices) {
+            val b = beatsMs[i]
+            if (b > timeMs) break
+            if (b < from) continue
+            val rr = if (i + 1 < beatsMs.size) beatsMs[i + 1] - b else if (i > 0) b - beatsMs[i - 1] else 800L
+            model.onBeat(BeatEvent(BeatKind.LUB, 1f, b), b / 1000f, ripples)
+            val dub = b + com.heartnote.app.audio.HeartbeatSynth.dubDelayMs(rr)
+            if (dub <= timeMs) model.onBeat(BeatEvent(BeatKind.DUB, 0.5f, dub), dub / 1000f, ripples)
+        }
+        step(tSec, frameDtSec, 0f, reducedMotion = false)
+    }
+
+    /** Projected positions of every bucket, for determinism tests. */
+    internal fun snapshot(): FloatArray {
+        val out = ArrayList<Float>()
+        for (b in 0 until BUCKETS) for (i in 0 until bucketCounts[b] * 2) out += buckets[b][i]
+        return out.toFloatArray()
     }
 
     companion object {
         const val BUCKETS = 4
+        private const val RIPPLE_WINDOW_MS = 1_500L
         const val CAMERA_DISTANCE = 3f       // × R (DESIGN.md: camera distance 3 R)
         private const val DEPTH_RANGE = 1.15f
         // DESIGN.md gives 1.2–2.8 "px"; applied as dp so dots stay visible on 3× screens.
