@@ -26,7 +26,9 @@ data class SignalsFile(
     val breathing: List<CurvePoint> = emptyList(),
     val pulseRate: List<PulsePoint> = emptyList(),
     val smiles: List<SmileSegment> = emptyList(),
-    val raw: RawSignals,
+    val raw: RawSignals = RawSignals(),
+    /** Received notes only: display columns from the shared payload (no raw trace). */
+    val dotColumns: List<Float> = emptyList(),
 )
 
 @Serializable

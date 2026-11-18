@@ -110,6 +110,29 @@
     <string name="consent_declined">Heartnote can\'t record without your OK. You can accept whenever you\'re ready.</string>
     <string name="consent_permissions_denied">Camera or microphone access was not allowed. You can turn it on in Settings › Apps › Heartnote › Permissions.</string>
 
+    <!-- WelcomeChoice + Tour (ONBOARDING.md) -->
+    <string name="welcome_heading_grey">Welcome to</string>
+    <string name="welcome_heading_black">Heartnote</string>
+    <string name="welcome_line">Voice notes that carry your real heartbeat.</string>
+    <string name="welcome_tour">Take the 30-second tour</string>
+    <string name="action_skip">Skip</string>
+    <string name="action_next">Next</string>
+    <string name="tour_start">Start</string>
+    <string name="tour_sample">Feel a sample beat</string>
+    <string name="tour_sample_stop">Stop the sample</string>
+    <string name="tour_sample_label">Sample heartbeat — generated, not a real person</string>
+    <string name="tour_page_cd">Page %1$d of %2$d</string>
+    <string name="tour_1_grey">Look and</string>
+    <string name="tour_1_black">speak</string>
+    <string name="tour_1_body">The camera reads your pulse from your face while you record. No video is saved.</string>
+    <string name="tour_2_grey">They hear and</string>
+    <string name="tour_2_black">feel it</string>
+    <string name="tour_2_body">Your voice plays with a heartbeat timed to yours, and the phone beats in their hand.</string>
+    <string name="tour_3_grey">Send it</string>
+    <string name="tour_3_black">anywhere</string>
+    <string name="tour_3_body">Share as a video that plays in any chat. Open it in Heartnote to feel the heartbeat.</string>
+    <string name="replay_tour">Replay tour</string>
+
     <!-- Privacy sheet (content source: TRD § CONSENT AND DATA HANDLING) -->
     <string name="privacy_title">Privacy</string>
     <string name="privacy_not_stored_title">Never stored</string>

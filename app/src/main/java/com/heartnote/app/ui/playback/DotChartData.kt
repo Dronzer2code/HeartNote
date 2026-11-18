@@ -1,5 +1,6 @@
 package com.heartnote.app.ui.playback
 
+import com.heartnote.app.data.SignalsFile
 import com.heartnote.app.signal.TimedValue
 import kotlin.math.ceil
 import kotlin.math.max
@@ -27,6 +28,39 @@ object DotChartData {
         val raw = peakToPeak(trace, 0, rows * ROW_MS, rows * ROW_COLUMNS)
         val all = normalise(raw)
         return List(rows) { r -> all.copyOfRange(r * ROW_COLUMNS, (r + 1) * ROW_COLUMNS) }
+    }
+
+    /** Library columns for a note: from its trace, or from received display columns. */
+    fun library(signals: SignalsFile): FloatArray =
+        if (signals.dotColumns.isNotEmpty()) {
+            resample(signals.dotColumns, LIBRARY_COLUMNS)
+        } else {
+            library(signals.raw.bpTrace.map { TimedValue(it.tMs, it.v) }, signals.durationMs)
+        }
+
+    /** Playback rows for a note: from its trace, or from received display columns. */
+    fun playbackRows(signals: SignalsFile): List<FloatArray> {
+        if (signals.dotColumns.isEmpty()) {
+            return playbackRows(signals.raw.bpTrace.map { TimedValue(it.tMs, it.v) }, signals.durationMs)
+        }
+        val rows = rowCount(signals.durationMs)
+        return List(rows) { r ->
+            FloatArray(ROW_COLUMNS) { c -> signals.dotColumns.getOrNull(r * ROW_COLUMNS + c)?.coerceIn(MIN_VALUE, 1f) ?: MIN_VALUE }
+        }
+    }
+
+    /** 200 ms columns for the whole note (shared payload `dotColumns`). */
+    fun payloadColumns(signals: SignalsFile): List<Float> {
+        val count = max(1, ceil(signals.durationMs / COLUMN_MS.toDouble()).toInt())
+        val trace = signals.raw.bpTrace.map { TimedValue(it.tMs, it.v) }
+        val values = normalise(peakToPeak(trace, 0, count * COLUMN_MS, count))
+        return values.map { (Math.round(it * 100) / 100f) }
+    }
+
+    private fun resample(values: List<Float>, columns: Int): FloatArray = FloatArray(columns) { c ->
+        val from = c * values.size / columns
+        val to = max(from + 1, (c + 1) * values.size / columns)
+        values.subList(from, min(to, values.size)).maxOrNull()?.coerceIn(MIN_VALUE, 1f) ?: MIN_VALUE
     }
 
     fun rowCount(durationMs: Long): Int = max(1, ceil(durationMs / ROW_MS.toDouble()).toInt())

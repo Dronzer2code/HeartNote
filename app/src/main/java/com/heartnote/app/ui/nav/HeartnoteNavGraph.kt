@@ -28,12 +28,17 @@ import com.heartnote.app.ui.onboarding.AboutSheet
 import com.heartnote.app.ui.onboarding.ConsentScreen
 import com.heartnote.app.ui.onboarding.ConsentStore
 import com.heartnote.app.ui.onboarding.PrivacySheet
+import com.heartnote.app.ui.onboarding.TourScreen
+import com.heartnote.app.ui.onboarding.WelcomeChoiceScreen
 import com.heartnote.app.ui.playback.PlaybackScreen
 import com.heartnote.app.ui.playback.PlaybackViewModel
 import com.heartnote.app.ui.record.RecordScreen
 
 object Routes {
     const val CONSENT = "consent"
+    const val WELCOME = "welcome"
+    const val TOUR = "tour?replay={replay}"
+    fun tour(replay: Boolean) = "tour?replay=$replay"
     const val LIBRARY = "library"
     const val RECORD = "record"
     const val PLAYBACK = "playback/{${PlaybackViewModel.NOTE_ID_ARG}}"
@@ -64,7 +69,17 @@ private val popExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> Exi
 fun HeartnoteNavGraph() {
     val nav = rememberNavController()
     val context = LocalContext.current
-    val start = remember { if (ConsentStore.isAccepted(context)) Routes.LIBRARY else Routes.CONSENT }
+    val start = remember {
+        when {
+            !ConsentStore.isAccepted(context) -> Routes.CONSENT
+            !ConsentStore.isTourCompleted(context) -> Routes.WELCOME
+            else -> Routes.LIBRARY
+        }
+    }
+    val toLibrary: () -> Unit = {
+        ConsentStore.completeTour(context)
+        nav.navigate(Routes.LIBRARY) { popUpTo(nav.graph.id) { inclusive = true } }
+    }
     var showPrivacy by rememberSaveable { mutableStateOf(false) }
     var showAbout by rememberSaveable { mutableStateOf(false) }
     val noteArg = listOf(navArgument(PlaybackViewModel.NOTE_ID_ARG) { type = NavType.StringType })
@@ -79,8 +94,19 @@ fun HeartnoteNavGraph() {
     ) {
         composable(Routes.CONSENT) {
             ConsentScreen(onAccepted = {
-                nav.navigate(Routes.LIBRARY) { popUpTo(Routes.CONSENT) { inclusive = true } }
+                val next = if (ConsentStore.isTourCompleted(context)) Routes.LIBRARY else Routes.WELCOME
+                nav.navigate(next) { popUpTo(Routes.CONSENT) { inclusive = true } }
             })
+        }
+        composable(Routes.WELCOME) {
+            WelcomeChoiceScreen(onTour = { nav.navigate(Routes.tour(replay = false)) }, onSkip = toLibrary)
+        }
+        composable(
+            Routes.TOUR,
+            arguments = listOf(navArgument("replay") { type = NavType.BoolType; defaultValue = false }),
+        ) { entry ->
+            val replay = entry.arguments?.getBoolean("replay") == true
+            TourScreen(onFinish = { if (replay) nav.popBackStack() else toLibrary() })
         }
         composable(Routes.LIBRARY) {
             LibraryScreen(
@@ -110,5 +136,13 @@ fun HeartnoteNavGraph() {
     }
 
     if (showPrivacy) PrivacySheet(onDismiss = { showPrivacy = false })
-    if (showAbout) AboutSheet(onDismiss = { showAbout = false })
+    if (showAbout) {
+        AboutSheet(
+            onDismiss = { showAbout = false },
+            onReplayTour = {
+                showAbout = false
+                nav.navigate(Routes.tour(replay = true))
+            },
+        )
+    }
 }

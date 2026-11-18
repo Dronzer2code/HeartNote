@@ -40,9 +40,15 @@ class HeartbeatHaptics(context: Context) {
      */
     fun isAvailable(): Boolean = vibrator.hasVibrator()
 
+    /** BeatBus events: only playback beats (with a note time) vibrate. */
     fun play(event: BeatEvent) {
         if (event.noteTimeMs == null) return
-        val lub = event.kind == BeatKind.LUB
+        beat(event.kind)
+    }
+
+    /** One lub or dub vibration (tour page 2 and the generated sample beat). */
+    fun beat(kind: BeatKind) {
+        val lub = kind == BeatKind.LUB
         val effect = when {
             primitive != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
                 VibrationEffect.startComposition()

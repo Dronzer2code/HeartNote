@@ -118,3 +118,16 @@ Done:
 5. Hold: the particle heart beating, the phone held close.
 6. Export → share to WhatsApp → play on another phone.
 7. Close: no video stored, nothing uploaded by Heartnote, delete anytime.
+
+## 2026-11-18 — Step 1: onboarding (ONBOARDING.md)
+
+Done:
+- R-O1: there was no demo-note code. The "auto-created note" was the Library's unfinished-note recovery (Phase D), which silently processed leftover raw files — on the test phone that is the developer's own 2026-11-16 recording. Recovery removed: notes now appear only when the user records or imports them.
+- R-O3: no bundled demo audio/signal files exist (`assets/` holds only licences; no `res/raw`).
+- WelcomeChoiceScreen, 3-page TourScreen (generated 70 BPM data only, Skip on every page, Next/Start, page dots), "Feel a sample beat" (8 s HeartbeatSynth at 70 BPM via in-memory AudioTrack + haptics, label "Sample heartbeat — generated, not a real person", nothing saved), "Replay tour" in the About sheet, `tourCompleted` in SharedPreferences (DataStore isn't in the project).
+- First launch: Consent → WelcomeChoice → Tour/Library. No permission is requested in the tour.
+
+Pending — needs the developer:
+- R-O2 migration: NOT implemented. No creation code or flag identifies a "demo" note, and the note on the phone is most likely the developer's real recording; ONBOARDING.md says to ask before deleting in that case.
+
+Verified: build + all unit tests; WelcomeChoice and Tour rendered as Studio previews. The emulator was stopped by Claude Code for low memory and not restarted.

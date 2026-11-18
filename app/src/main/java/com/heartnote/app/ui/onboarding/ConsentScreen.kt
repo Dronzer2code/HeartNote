@@ -46,16 +46,28 @@ import com.heartnote.app.ui.theme.HnColors
 import com.heartnote.app.ui.theme.HnDims
 import com.heartnote.app.ui.theme.HnType
 
-/** F1 consent flag; the camera/mic permission request happens only after it is set. */
+/**
+ * F1 consent flag (the camera/mic request happens only after it is set) and
+ * ONBOARDING.md R-O8 `tourCompleted` (completed or skipped). SharedPreferences:
+ * DataStore is not in the project.
+ */
 object ConsentStore {
     private const val PREFS = "heartnote"
     private const val KEY = "consent_accepted_v1"
+    private const val TOUR_KEY = "tour_completed_v1"
 
-    fun isAccepted(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY, false)
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    fun isAccepted(context: Context): Boolean = prefs(context).getBoolean(KEY, false)
 
     fun accept(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY, true).apply()
+        prefs(context).edit().putBoolean(KEY, true).apply()
+    }
+
+    fun isTourCompleted(context: Context): Boolean = prefs(context).getBoolean(TOUR_KEY, false)
+
+    fun completeTour(context: Context) {
+        prefs(context).edit().putBoolean(TOUR_KEY, true).apply()
     }
 }
 

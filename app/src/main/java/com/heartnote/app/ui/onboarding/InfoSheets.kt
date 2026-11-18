@@ -8,6 +8,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -39,7 +41,7 @@ fun PrivacySheet(onDismiss: () -> Unit) {
 /** About sheet with credits. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AboutSheet(onDismiss: () -> Unit) {
+fun AboutSheet(onDismiss: () -> Unit, onReplayTour: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = HnColors.CardWhite) {
         Column(
             Modifier
@@ -54,6 +56,9 @@ fun AboutSheet(onDismiss: () -> Unit) {
             Text(stringResource(R.string.about_credits_title), style = HnType.bodyPrimary, color = HnColors.InkBlack, modifier = Modifier.padding(top = 20.dp))
             listOf(R.string.about_credit_presage, R.string.about_credit_inter, R.string.about_credit_lucide, R.string.about_credit_design).forEach {
                 Text("•  " + stringResource(it), style = HnType.bodySecondary, color = HnColors.InkBlack, modifier = Modifier.padding(top = 6.dp))
+            }
+            TextButton(onClick = onReplayTour, modifier = Modifier.padding(top = 12.dp).heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.replay_tour), style = HnType.bodyPrimary, color = HnColors.DotRed)
             }
             Text(
                 stringResource(R.string.about_version, BuildConfig.VERSION_NAME),

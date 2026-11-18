@@ -19,3 +19,6 @@ testdata/private/
 docs/design/ref-*
 /.claude/settings.local.json
 /.idea/deploymentTargetSelector.xml
+
+# Office lock files
+~$*

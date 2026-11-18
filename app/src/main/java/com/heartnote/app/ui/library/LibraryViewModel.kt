@@ -1,14 +1,10 @@
 package com.heartnote.app.ui.library
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
-import com.heartnote.app.R
-import com.heartnote.app.data.NoteProcessor
 import androidx.lifecycle.viewModelScope
 import com.heartnote.app.data.NoteMeta
 import com.heartnote.app.data.NoteRepository
-import com.heartnote.app.signal.TimedValue
 import com.heartnote.app.ui.playback.DotChartData
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +23,10 @@ data class LibraryUiState(
     val older: List<NoteMeta> get() = notes.drop(1)
 }
 
-/** F10: lists finished notes; the latest note's signal track feeds its dot chart. */
+/**
+ * F10: lists finished notes. Notes only ever appear because the user recorded
+ * or imported them (ONBOARDING.md R-O1: nothing is added without asking).
+ */
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = NoteRepository(application.filesDir)
     private val _uiState = MutableStateFlow(LibraryUiState())
@@ -37,13 +36,9 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     fun refresh() {
         viewModelScope.launch {
             val state = withContext(Dispatchers.IO) {
-                finishUnfinishedNotes()
                 val notes = repository.list()
                 val columns = notes.firstOrNull()?.let { latest ->
-                    runCatching {
-                        val signals = repository.readSignals(latest.id)
-                        DotChartData.library(signals.raw.bpTrace.map { TimedValue(it.tMs, it.v) }, signals.durationMs)
-                    }.getOrNull()
+                    runCatching { DotChartData.library(repository.readSignals(latest.id)) }.getOrNull()
                 }
                 LibraryUiState(loading = false, notes = notes, latestColumns = columns)
             }
@@ -52,26 +47,4 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun audioFile(id: String): File = repository.audioFile(id)
-
-    /**
-     * Completes notes left with raw files only. The Library is never started
-     * while RecordScreen is processing, so this cannot race the live pipeline.
-     * One attempt per note per process, so a failing note cannot loop.
-     */
-    private suspend fun finishUnfinishedNotes() {
-        val processor = NoteProcessor(repository)
-        val title = getApplication<Application>().getString(R.string.default_note_title)
-        for (id in repository.unfinished()) {
-            if (!attempted.add(id)) continue
-            runCatching {
-                val createdAt = repository.readSignals(id).audioStartEpochMs
-                if (repository.readMeta(id) == null) processor.process(id, title, createdAt) else processor.render(id)
-            }.onFailure { Log.w(TAG, "could not finish note $id", it) }
-        }
-    }
-
-    companion object {
-        private const val TAG = "Heartnote"
-        private val attempted = java.util.Collections.synchronizedSet(HashSet<String>())
-    }
 }
