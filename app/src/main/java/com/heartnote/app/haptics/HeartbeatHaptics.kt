@@ -58,14 +58,19 @@ class HeartbeatHaptics(context: Context) {
                 VibrationEffect.createOneShot(if (lub) 40L else 25L, if (lub) 255 else 140)
             else -> VibrationEffect.createOneShot(if (lub) 40L else 25L, VibrationEffect.DEFAULT_AMPLITUDE)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            vibrator.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_MEDIA))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(
-                effect,
-                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build(),
-            )
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                vibrator.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_MEDIA))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(
+                    effect,
+                    AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build(),
+                )
+            }
+            HapticsLog.d { "vibrate $kind ok hasVibrator=${vibrator.hasVibrator()} amplitude=${vibrator.hasAmplitudeControl()} primitive=$primitive" }
+        } catch (e: Exception) {
+            HapticsLog.e("vibrate $kind failed", e)
         }
     }
 }

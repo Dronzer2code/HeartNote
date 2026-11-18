@@ -4,10 +4,8 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import com.heartnote.app.audio.HeartbeatSynth
+import com.heartnote.app.haptics.HapticsLog
 import com.heartnote.app.ui.beat.BeatBus
-import com.heartnote.app.ui.beat.BeatEvent
-import com.heartnote.app.ui.beat.BeatKind
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -32,12 +30,8 @@ data class PlayerState(
  * Must be used from the main thread. Shared by PlaybackScreen and HoldScreen.
  */
 class NotePlayer(context: Context, private val scope: CoroutineScope) {
-    private data class Tick(val timeMs: Long, val kind: BeatKind, val beatMs: Long)
-
     private val player = ExoPlayer.Builder(context.applicationContext).build()
-    private var ticks: List<Tick> = emptyList()
-    private var cursor = 0
-    private var lastPosition = 0L
+    private var cursor = BeatCursor(emptyList())
     private var pollJob: Job? = null
 
     private val _state = MutableStateFlow(PlayerState())
@@ -57,7 +51,7 @@ class NotePlayer(context: Context, private val scope: CoroutineScope) {
                 if (playbackState == Player.STATE_ENDED) {
                     player.pause()
                     player.seekTo(0)
-                    resetCursor(0)
+                    cursor.reset(0)
                     _state.update { it.copy(positionMs = 0) }
                 }
             }
@@ -65,13 +59,9 @@ class NotePlayer(context: Context, private val scope: CoroutineScope) {
     }
 
     fun load(audio: File, beatsMs: List<Long>, durationMs: Long) {
-        ticks = beatsMs.flatMapIndexed { i, beat ->
-            listOf(
-                Tick(beat, BeatKind.LUB, beat),
-                Tick(beat + HeartbeatSynth.dubDelayMs(HeartbeatSynth.rrAt(beatsMs, i)), BeatKind.DUB, beat),
-            )
-        }.sortedBy { it.timeMs }
-        resetCursor(0)
+        cursor = BeatCursor(beatsMs)
+        cursor.reset(0)
+        HapticsLog.d { "player load ${audio.name} exists=${audio.exists()} beats=${cursor.beatCount} durationMs=$durationMs" }
         _state.update { it.copy(durationMs = durationMs, positionMs = 0) }
         player.setMediaItem(MediaItem.fromUri(audio.toURI().toString()))
         player.prepare()
@@ -88,7 +78,7 @@ class NotePlayer(context: Context, private val scope: CoroutineScope) {
 
     fun seekTo(ms: Long) {
         player.seekTo(ms)
-        resetCursor(ms)
+        cursor.reset(ms)
         _state.update { it.copy(positionMs = ms) }
     }
 
@@ -97,22 +87,15 @@ class NotePlayer(context: Context, private val scope: CoroutineScope) {
         player.release()
     }
 
-    private fun resetCursor(positionMs: Long) {
-        cursor = ticks.indexOfFirst { it.timeMs > positionMs }.let { if (it < 0) ticks.size else it }
-        lastPosition = positionMs
-    }
-
     private fun startPolling() {
         if (pollJob?.isActive == true) return
         pollJob = scope.launch {
             while (isActive) {
                 val position = player.currentPosition
-                if (position < lastPosition) resetCursor(position) // seek or loop
-                while (cursor < ticks.size && ticks[cursor].timeMs <= position) {
-                    val tick = ticks[cursor++]
-                    BeatBus.emit(BeatEvent(tick.kind, if (tick.kind == BeatKind.LUB) 1f else 0.5f, tick.beatMs))
+                cursor.advance(position) { event ->
+                    HapticsLog.d { "fire ${event.kind} beat=${event.noteTimeMs} pos=$position" }
+                    BeatBus.emit(event)
                 }
-                lastPosition = position
                 _state.update { it.copy(positionMs = position) }
                 delay(POLL_MS)
             }

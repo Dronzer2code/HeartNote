@@ -11,7 +11,13 @@ enum class BeatKind { LUB, DUB }
  * (recording) beats. Haptics react only to events with a note time, so a live
  * beat can never vibrate (DESIGN.md § BEAT SYNC rule 6).
  */
-data class BeatEvent(val kind: BeatKind, val strength: Float, val noteTimeMs: Long?)
+data class BeatEvent(
+    val kind: BeatKind,
+    val strength: Float,
+    val noteTimeMs: Long?,
+    /** Playback LUBs: time to this beat's DUB, so haptics can play lub + dub as one waveform. */
+    val dubDelayMs: Long? = null,
+)
 
 /** Single source of beat events for visuals and haptics (DESIGN.md § BEAT SYNC). */
 object BeatBus {

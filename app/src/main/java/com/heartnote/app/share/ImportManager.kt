@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import com.heartnote.app.R
+import com.heartnote.app.haptics.HapticsLog
 import com.heartnote.app.data.NoteMeta
 import com.heartnote.app.data.NoteRepository
 import com.heartnote.app.data.SignalsFile
@@ -35,7 +36,9 @@ class ImportManager(private val context: Context, private val repository: NoteRe
             if (!PayloadTrack.hasAudio(file)) return@runCatching Result.NotAHeartnote
 
             // 2. Payload track, else beat recovery from the audio.
-            val payload = PayloadTrack.read(file)?.let { HeartnotePayload.decode(it) }
+            val payloadBytes = PayloadTrack.read(file)
+            val payload = payloadBytes?.let { HeartnotePayload.decode(it) }
+            HapticsLog.d { "import $name: payloadTrack=${payloadBytes?.size ?: "none"} bytes, decoded=${payload != null}" }
             val durationMs = PayloadTrack.durationMs(file) ?: payload?.durationMs ?: 0L
             val beats = payload?.let { BeatsFound(it.beatsMs, it.beatSource, it.smiles, it.dotColumns, it.title) }
                 ?: BeatRecovery.recover(file, durationMs)?.let {
@@ -43,6 +46,7 @@ class ImportManager(private val context: Context, private val repository: NoteRe
                 }
                 ?: return@runCatching Result.NotAHeartnote
 
+            HapticsLog.d { "import $name: beatSource=${beats.source} beats=${beats.beatsMs.size} durationMs=$durationMs" }
             // 3. signals.json (beats, smiles, display columns — no raw signals) + meta.json.
             val duration = maxOf(durationMs, payload?.durationMs ?: 0L)
             repository.writeSignals(
@@ -70,7 +74,10 @@ class ImportManager(private val context: Context, private val repository: NoteRe
                 ),
             )
             Result.Imported(id)
-        }.getOrElse { Result.Failed }.also { if (it !is Result.Imported) repository.delete(id) }
+        }.getOrElse {
+            HapticsLog.e("import failed", it)
+            Result.Failed
+        }.also { if (it !is Result.Imported) repository.delete(id) }
     }
 
     private data class BeatsFound(

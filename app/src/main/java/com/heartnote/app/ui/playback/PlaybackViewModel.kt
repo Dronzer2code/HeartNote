@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.heartnote.app.data.NoteMeta
 import com.heartnote.app.data.NoteRepository
 import com.heartnote.app.data.SignalsFile
+import com.heartnote.app.haptics.HapticsLog
 import com.heartnote.app.haptics.HeartbeatHaptics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,6 +66,10 @@ open class PlaybackViewModel(
             if (meta == null || signals == null || !repository.playbackFile(meta).exists()) {
                 _uiState.update { it.copy(loadFailed = true) }
                 return@launch
+            }
+            HapticsLog.d {
+                "note ${meta.id} origin=${meta.origin} beatSource=${signals.beatSource} beats=${signals.beatsMs.size} " +
+                    "first=${signals.beatsMs.take(3)} durationMs=${signals.durationMs} file=${repository.playbackFile(meta).name}"
             }
             _uiState.update { it.copy(meta = meta, signals = signals) }
             player.load(repository.playbackFile(meta), signals.beatsMs, signals.durationMs)
