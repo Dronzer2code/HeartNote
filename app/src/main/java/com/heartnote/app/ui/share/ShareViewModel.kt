@@ -6,6 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.heartnote.app.data.NoteMeta
 import com.heartnote.app.data.NoteRepository
+import com.heartnote.app.R
+import com.heartnote.app.share.DeviceSaver
 import com.heartnote.app.share.ShareExports
 import com.heartnote.app.ui.playback.VideoExportState
 import kotlinx.coroutines.CancellationException
@@ -22,6 +24,9 @@ data class ShareUiState(
     val busy: Boolean = false,
     /** A file ready for the system share sheet; the host shares it once. */
     val shareReady: ShareExports.Shareable? = null,
+    /** Display name of a file just saved to Downloads/Heartnote (shows the instructions). */
+    val savedName: String? = null,
+    @androidx.annotation.StringRes val error: Int? = null,
 )
 
 /**
@@ -51,6 +56,30 @@ class ShareViewModel(application: Application) : AndroidViewModel(application) {
     fun shareVideo() = withVideo { file -> _uiState.update { it.copy(shareReady = file) } }
 
     fun shareAudio() = withAudio { file -> _uiState.update { it.copy(shareReady = file) } }
+
+    /** "Save video to phone": the exported .mp4 with payload → Downloads/Heartnote. */
+    fun saveVideo() = withVideo { save(it) }
+
+    /** "Save audio to phone" (or the original file of a received note). */
+    fun saveAudio() = withAudio { save(it) }
+
+    fun onSaveDenied() = _uiState.update { it.copy(error = R.string.save_permission_denied) }
+
+    fun closeSaved() = _uiState.update { ShareUiState() }
+
+    private fun save(file: ShareExports.Shareable) {
+        val meta = _uiState.value.meta ?: return
+        _uiState.update { it.copy(busy = true, error = null) }
+        viewModelScope.launch {
+            val name = DeviceSaver.fileName(meta.title, file.file.extension)
+            runCatching { DeviceSaver.save(getApplication(), file.file, name, file.mimeType) }
+                .onSuccess { saved -> _uiState.update { it.copy(busy = false, savedName = saved) } }
+                .onFailure { e ->
+                    Log.e(TAG, "save to Downloads failed", e)
+                    _uiState.update { it.copy(busy = false, error = R.string.save_failed) }
+                }
+        }
+    }
 
     fun cancelVideo() {
         videoJob?.cancel()

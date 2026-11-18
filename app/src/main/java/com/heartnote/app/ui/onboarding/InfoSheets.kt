@@ -41,6 +41,7 @@ fun PrivacySheet(onDismiss: () -> Unit, onReplayTour: () -> Unit) {
                 R.string.privacy_stored_title to R.string.privacy_stored,
                 R.string.privacy_sharing_title to R.string.privacy_sharing,
                 R.string.privacy_shared_title to R.string.privacy_shared,
+                R.string.privacy_saved_title to R.string.privacy_saved,
                 R.string.privacy_received_title to R.string.privacy_received,
                 R.string.privacy_delete_title to R.string.privacy_delete,
                 R.string.privacy_servers_title to R.string.privacy_servers,

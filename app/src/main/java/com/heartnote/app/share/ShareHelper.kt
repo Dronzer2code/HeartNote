@@ -12,6 +12,16 @@ import java.io.File
  * (SHARE_AND_IMPORT.md § PAYLOAD) but never raw signals.
  */
 object ShareHelper {
+    private const val WHATSAPP = "com.whatsapp"
+
+    fun isWhatsAppInstalled(context: Context): Boolean =
+        context.packageManager.getLaunchIntentForPackage(WHATSAPP) != null
+
+    /** Opens WhatsApp itself (the user then attaches the saved file as a Document). */
+    fun openWhatsApp(context: Context) {
+        context.packageManager.getLaunchIntentForPackage(WHATSAPP)?.let { context.startActivity(it) }
+    }
+
     fun share(context: Context, audio: File, chooserTitle: String, mimeType: String = "audio/mp4") {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", audio)
         val send = Intent(Intent.ACTION_SEND).apply {

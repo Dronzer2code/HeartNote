@@ -155,6 +155,8 @@
     <string name="privacy_delete">Delete removes every file of a note. Uninstalling Heartnote removes all notes. Notes are not included in phone backups.</string>
     <string name="privacy_shared_title">What a shared file contains</string>
     <string name="privacy_shared">Your voice, the heartbeat sound, the beat timing and display values, so Heartnote can replay it. No raw camera-derived signals: no pulse waveform, pulse-rate samples, breathing or expressions.</string>
+    <string name="privacy_saved_title">Saved files</string>
+    <string name="privacy_saved">"Save to phone" puts a copy in Downloads/Heartnote, outside Heartnote: you, and apps you allow, can open it there. Deleting the note does not delete that copy.</string>
     <string name="privacy_received_title">Received notes</string>
     <string name="privacy_received">Importing is always your choice. Received notes are stored only on this phone and can be deleted at any time.</string>
     <string name="privacy_servers_title">Servers</string>
@@ -179,7 +181,7 @@
     <!-- Share sheet (F9 revised) + video (F13) -->
     <string name="share_sheet_title">Share</string>
     <string name="share_video">Video</string>
-    <string name="share_video_desc">Plays anywhere. Opens in Heartnote with the heartbeat you can feel.</string>
+    <string name="share_video_desc">Plays anywhere. Open it in Heartnote to feel the heartbeat.</string>
     <string name="share_audio">Audio only</string>
     <string name="share_audio_desc">Voice and heartbeat sound.</string>
     <string name="share_tip">On WhatsApp, send it as a Document so it keeps the full heartbeat.</string>
@@ -192,6 +194,12 @@
     <string name="save_video_action">Save video to phone</string>
     <string name="save_audio_action">Save audio to phone</string>
     <string name="save_to_phone">Save to phone</string>
+    <string name="saved_title">Saved to Downloads/Heartnote</string>
+    <string name="saved_steps">To keep the heartbeat on WhatsApp: open the chat → Attach → Document → Browse → Downloads/Heartnote → pick the file.</string>
+    <string name="open_whatsapp">Open WhatsApp</string>
+    <string name="action_done">Done</string>
+    <string name="save_failed">Couldn\'t save the file.</string>
+    <string name="save_permission_denied">Saving to Downloads needs storage access on this Android version.</string>
     <string name="share_making_video">Making the video… %1$d%%</string>
     <string name="share_video_failed">Couldn\'t make the video</string>
     <string name="video_footer">Open in Heartnote to feel this heartbeat</string>

@@ -200,3 +200,8 @@ Done: PRD (F1 flow, F9 revised, F12→F13, F13, F14, F15, C7), TRD (project stru
 
 ### Fix 1: one share entry point
 - Every share button (Playback, Hold, Library "share latest") opens the same sheet through `ui/share/ShareViewModel` + `NoteShareSheet`. Hold no longer shares the raw .m4a. `ShareHelper` is the only place that creates a share Intent (checked by search). Received notes get one "Original file" section in the same sheet.
+
+### Fix 2: save to phone + Document instructions
+- Share sheet sections now have Share + "Save video/audio to phone" (received notes: Share / Save to phone of the original file). `DeviceSaver` writes the exported file WITH the payload track to Downloads/Heartnote: MediaStore.Downloads on API 29+, legacy public Downloads + `WRITE_EXTERNAL_STORAGE` (maxSdkVersion 28) requested only at save time on API 28. Name `Heartnote_<title>_<yyyyMMdd_HHmm>.<ext>` (unit-tested sanitising).
+- After saving: "Saved to Downloads/Heartnote" sheet with the WhatsApp Attach → Document → Browse steps and "Open WhatsApp" (only when `com.whatsapp` is installed; `<queries>` entry added).
+- Honest video subtitle: "Plays anywhere. Open it in Heartnote to feel the heartbeat." Privacy sheet: saved copies live outside Heartnote and are not deleted with the note.

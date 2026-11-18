@@ -57,6 +57,7 @@ fun ShareSheet(
     onDismiss: () -> Unit,
     onSaveVideo: (() -> Unit)? = null,
     onSaveAudio: (() -> Unit)? = null,
+    @androidx.annotation.StringRes error: Int? = null,
 ) {
     val exporting = video is VideoExportState.Running
     ModalBottomSheet(
@@ -106,6 +107,7 @@ fun ShareSheet(
                     enabled = !busy,
                 )
             }
+            error?.let { Text(stringResource(it), style = HnType.caption, color = HnColors.DotRed) }
             Text(stringResource(R.string.share_tip), style = HnType.caption, color = HnColors.InkGrey, modifier = Modifier.padding(top = 4.dp))
             Text(stringResource(R.string.share_disclosure), style = HnType.caption, color = HnColors.InkGrey)
         }
