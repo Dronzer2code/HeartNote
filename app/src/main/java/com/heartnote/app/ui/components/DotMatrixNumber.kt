@@ -88,6 +88,30 @@ fun DotMatrixNumber(
     }
 }
 
+/** Width of [length] glyphs at [digitHeightPx] (5 columns + 1 gap per glyph). */
+fun dotMatrixWidth(length: Int, digitHeightPx: Float): Float =
+    digitHeightPx / ROWS * (length * GLYPH_COLS + (length - 1).coerceAtLeast(0))
+
+/** Same glyphs on a plain android Canvas (video export frames). */
+fun drawDotMatrix(
+    canvas: android.graphics.Canvas,
+    value: String,
+    left: Float,
+    top: Float,
+    digitHeightPx: Float,
+    paint: android.graphics.Paint,
+) {
+    val cell = digitHeightPx / ROWS
+    val radius = cell * DOT_FRACTION / 2
+    value.forEachIndexed { slot, ch ->
+        val glyph = GLYPHS[ch] ?: return@forEachIndexed
+        val x0 = left + slot * (GLYPH_COLS + 1) * cell
+        for (row in 0 until ROWS) for (col in 0 until GLYPH_COLS) {
+            if (glyph.isOn(row, col)) canvas.drawCircle(x0 + (col + 0.5f) * cell, top + (row + 0.5f) * cell, radius, paint)
+        }
+    }
+}
+
 private const val ROWS = 7
 private const val GLYPH_COLS = 5
 private const val DOT_FRACTION = 0.78f

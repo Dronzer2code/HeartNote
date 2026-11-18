@@ -152,3 +152,16 @@ Done:
 - 2 new unit tests (transient + harmonics present; limiter keeps a loud voice under full scale). `testdata/private/heartbeat-preview.wav` regenerated with the new sound.
 
 Needs the phone: tune `Mixer.HEARTBEAT_GAIN` by ear on the speaker with a real voice recording (the existing test recording's voice track is silent).
+
+## 2026-11-18 — Step 4: video export (F13) + share sheet
+
+Done:
+- `ParticleEngine.renderAt` / `prepareAt`: deterministic frames from beat times (2 JVM tests: same time + beats → identical particles regardless of history).
+- Media3 1.11.1 checked with javap: `CanvasOverlay(boolean)` + `onDraw(Canvas, long)`, `EditedMediaItem.Builder.setDurationUs/setFrameRate`, multi-sequence `Composition.Builder`, `Transformer.start/cancel/getProgress` all exist (Option A fits). **Option B chosen**: no new dependencies, exact frame timing, reuses the MediaCodec path already proven on the emulator.
+- `HeartnoteVideoFrame` (720×1280: gradient + lub flash, particle heart, title, dot-matrix beats-played counter, footer + wordmark, 2 s end card; glow as a radial-gradient disc, no blur) — design checked via Studio previews of real frames.
+- `HeartnoteVideoExporter`: H.264 Baseline (no B-frames), surface input + `lockHardwareCanvas`, PTS rewritten to frame × 33,333 µs, AAC copied from heartnote.m4a, then `PayloadTrack.write` remux adds the payload. Cancellable; cached as `share/Heartnote for <title>.mp4` until renamed.
+- Share sheet (F9 revised): Video (default) / Audio only, progress + Cancel, "Couldn't make the video" + Retry (Audio only stays available), WhatsApp-Document tip and the disclosure line. Received notes skip the sheet (original file only).
+
+Deviations: video bitrate 1.8 Mbps instead of 2 Mbps (2 Mbps + 128 kbps × 60 s = 15.96 MB, no headroom under the 16 MB target); cache path `share/Heartnote for <title>.mp4` instead of `notes/<id>/heartnote.mp4` so the recipient sees a meaningful file name. Hold screen's share button shares audio directly.
+
+Needs the phone: encode a real note (speed, size ≤ 16 MB for 60 s, cancel), play in Google Photos and in WhatsApp (sent as media).

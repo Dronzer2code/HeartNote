@@ -107,6 +107,23 @@ fun PlaybackScreen(
         }
     }
     LaunchedEffect(state.deleted) { if (state.deleted) onDeleted() }
+    var showShare by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.shareReady) {
+        state.shareReady?.let {
+            showShare = false
+            viewModel.onShared()
+            ShareHelper.share(context, it.file, shareTitle, it.mimeType)
+        }
+    }
+    if (showShare) {
+        ShareSheet(
+            video = state.videoExport,
+            onVideo = viewModel::shareVideo,
+            onAudio = viewModel::shareAudio,
+            onCancelVideo = viewModel::cancelVideo,
+            onDismiss = { showShare = false },
+        )
+    }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.pause() }
 
     val rows = remember(state.signals) {
@@ -130,8 +147,11 @@ fun PlaybackScreen(
         bluetoothOutput = state.bluetoothOutput,
         onBack = onBack,
         onShare = {
-            scope.launch {
-                viewModel.shareable()?.let { ShareHelper.share(context, it.file, shareTitle, it.mimeType) }
+            // Received notes are re-shared only as the original file: no sheet.
+            if (state.meta?.isReceived == true) {
+                scope.launch { viewModel.shareable()?.let { ShareHelper.share(context, it.file, shareTitle, it.mimeType) } }
+            } else {
+                showShare = true
             }
         },
         onTogglePlay = viewModel::togglePlay,

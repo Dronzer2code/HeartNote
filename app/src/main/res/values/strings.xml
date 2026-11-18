@@ -176,6 +176,18 @@
     <string name="hold_replay">Replay</string>
     <string name="hold_beat_count_cd">%1$d heartbeats played</string>
 
+    <!-- Share sheet (F9 revised) + video (F13) -->
+    <string name="share_sheet_title">Share</string>
+    <string name="share_video">Video</string>
+    <string name="share_video_desc">Plays anywhere. Opens in Heartnote with the heartbeat you can feel.</string>
+    <string name="share_audio">Audio only</string>
+    <string name="share_audio_desc">Voice and heartbeat sound.</string>
+    <string name="share_tip">On WhatsApp, send it as a Document so it keeps the full heartbeat.</string>
+    <string name="share_disclosure">Shared files include your heartbeat timing so Heartnote can replay it.</string>
+    <string name="share_making_video">Making the video… %1$d%%</string>
+    <string name="share_video_failed">Couldn\'t make the video</string>
+    <string name="video_footer">Open in Heartnote to feel this heartbeat</string>
+
     <!-- R6: the heartbeat is synthesized at the measured beat times. -->
     <string name="beat_label_trace">Timed to your measured pulse</string>
     <string name="beat_label_rate">Paced by your live pulse</string>

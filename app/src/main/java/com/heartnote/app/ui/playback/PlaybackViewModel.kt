@@ -26,6 +26,9 @@ data class PlaybackUiState(
     val player: PlayerState = PlayerState(),
     val vibrationAvailable: Boolean = true,
     val bluetoothOutput: Boolean = false,
+    val videoExport: VideoExportState = VideoExportState.Idle,
+    /** A file ready for the system share sheet; the screen shares it once. */
+    val shareReady: ShareExports.Shareable? = null,
     val deleted: Boolean = false,
     val loadFailed: Boolean = false,
 )
@@ -38,7 +41,8 @@ open class PlaybackViewModel(
     val noteId: String = checkNotNull(savedStateHandle[NOTE_ID_ARG])
 
     private val repository = NoteRepository(application.filesDir)
-    private val exports = ShareExports(repository)
+    private val exports = ShareExports(repository, application)
+    private var videoJob: kotlinx.coroutines.Job? = null
     private val player = NotePlayer(application, viewModelScope)
     private val audioManager = application.getSystemService(AudioManager::class.java)
 
@@ -92,6 +96,44 @@ open class PlaybackViewModel(
             _uiState.update { it.copy(deleted = true) }
         }
     }
+
+    /** F13: render (or reuse) the video, then hand it to the share sheet. Cancellable. */
+    fun shareVideo() {
+        val meta = _uiState.value.meta ?: return
+        if (videoJob?.isActive == true) return
+        _uiState.update { it.copy(videoExport = VideoExportState.Running(0f)) }
+        videoJob = viewModelScope.launch {
+            val result = runCatching {
+                exports.video(meta) { p -> _uiState.update { it.copy(videoExport = VideoExportState.Running(p)) } }
+            }
+            val error = result.exceptionOrNull()
+            if (error is kotlinx.coroutines.CancellationException) {
+                _uiState.update { it.copy(videoExport = VideoExportState.Idle) }
+                throw error
+            }
+            _uiState.update {
+                if (error == null) {
+                    it.copy(videoExport = VideoExportState.Idle, shareReady = result.getOrNull())
+                } else {
+                    android.util.Log.e("Heartnote", "video export failed", error)
+                    it.copy(videoExport = VideoExportState.Failed)
+                }
+            }
+        }
+    }
+
+    fun cancelVideo() {
+        videoJob?.cancel()
+        _uiState.update { it.copy(videoExport = VideoExportState.Idle) }
+    }
+
+    fun shareAudio() {
+        viewModelScope.launch {
+            shareable()?.let { file -> _uiState.update { it.copy(shareReady = file) } }
+        }
+    }
+
+    fun onShared() = _uiState.update { it.copy(shareReady = null, videoExport = VideoExportState.Idle) }
 
     /** The file to share: own notes get the payload track; received notes the original file. */
     suspend fun shareable(): ShareExports.Shareable? {

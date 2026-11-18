@@ -1,6 +1,8 @@
 package com.heartnote.app.share
 
+import android.content.Context
 import com.heartnote.app.data.NoteMeta
+import com.heartnote.app.export.HeartnoteVideoExporter
 import com.heartnote.app.data.NoteRepository
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -11,7 +13,7 @@ import kotlinx.coroutines.withContext
  * payload track (title included, so it is rebuilt on rename); received
  * notes are re-shared only as the original received file.
  */
-class ShareExports(private val repository: NoteRepository) {
+class ShareExports(private val repository: NoteRepository, private val context: Context? = null) {
 
     data class Shareable(val file: File, val mimeType: String)
 
@@ -22,6 +24,28 @@ class ShareExports(private val repository: NoteRepository) {
         repository.shareDir(meta.id).listFiles()?.filter { it.extension == "m4a" && it != out }?.forEach { it.delete() }
         PayloadTrack.write(repository.audioFile(meta.id), out, payload)
         Shareable(out, "audio/mp4")
+    }
+
+    /**
+     * F13 video with payload, cached as `share/Heartnote for <title>.mp4`
+     * until the note is renamed (the title is in the file name and payload).
+     */
+    suspend fun video(meta: NoteMeta, onProgress: (Float) -> Unit): Shareable = withContext(Dispatchers.IO) {
+        if (meta.isReceived) return@withContext received(meta)
+        val out = File(repository.shareDir(meta.id), fileName(meta.title, "mp4"))
+        if (out.exists() && out.length() > 0) return@withContext Shareable(out, "video/mp4")
+        repository.shareDir(meta.id).listFiles()?.filter { it.extension == "mp4" }?.forEach { it.delete() }
+        val signals = repository.readSignals(meta.id)
+        HeartnoteVideoExporter(checkNotNull(context)).export(
+            title = meta.title,
+            beatsMs = signals.beatsMs,
+            durationMs = signals.durationMs,
+            audio = repository.audioFile(meta.id),
+            payload = HeartnotePayload.from(meta, signals).encode(),
+            out = out,
+            onProgress = onProgress,
+        )
+        Shareable(out, "video/mp4")
     }
 
     fun received(meta: NoteMeta): Shareable {
