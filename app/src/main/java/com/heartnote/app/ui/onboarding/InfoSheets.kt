@@ -91,7 +91,7 @@ private fun VibrationSettings() {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PrivacySheet(onDismiss: () -> Unit, onReplayTour: () -> Unit) {
+fun PrivacySheet(onDismiss: () -> Unit, onReplayTour: () -> Unit, onMixTuning: () -> Unit = {}) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = HnColors.CardWhite) {
         Column(
             Modifier
@@ -126,6 +126,11 @@ fun PrivacySheet(onDismiss: () -> Unit, onReplayTour: () -> Unit) {
             }
             TextButton(onClick = onReplayTour, modifier = Modifier.padding(top = 12.dp).heightIn(min = HnDims.minTouch)) {
                 Text(stringResource(R.string.replay_tour), style = HnType.bodyPrimary, color = HnColors.DotRed)
+            }
+            if (BuildConfig.DEBUG) {
+                TextButton(onClick = onMixTuning, modifier = Modifier.heightIn(min = HnDims.minTouch)) {
+                    Text("Mix tuning (debug)", style = HnType.bodyPrimary, color = HnColors.InkGrey)
+                }
             }
             Text(
                 stringResource(R.string.about_version, BuildConfig.VERSION_NAME),

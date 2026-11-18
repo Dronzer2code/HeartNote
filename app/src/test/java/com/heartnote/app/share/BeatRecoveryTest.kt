@@ -1,6 +1,7 @@
 package com.heartnote.app.share
 
 import com.heartnote.app.audio.HeartbeatSynth
+import com.heartnote.app.audio.MixSettings
 import com.heartnote.app.audio.Mixer
 import kotlin.math.PI
 import kotlin.math.abs
@@ -12,7 +13,8 @@ import org.junit.Test
 
 /**
  * JVM proxy for § BEAT RECOVERY: a mixed note (speech-like voice + SPEAKER
- * heartbeat at the real mix gain), degraded the way a lossy re-encode does
+ * heartbeat through the real Mixer, at its defaults and at the loudest-voice /
+ * quietest-heartbeat end of the tuning range), degraded the way a lossy re-encode does
  * (band limit, noise, 44.1 kHz resample), then recovered. The real target —
  * a WhatsApp media send — must still be measured on the phone.
  */
@@ -46,9 +48,9 @@ class BeatRecoveryTest {
         }
     }
 
-    private fun mixedNote(beats: List<Long>, seed: Int, minPitch: Double = 110.0): FloatArray {
+    private fun mixedNote(beats: List<Long>, seed: Int, minPitch: Double = 110.0, mix: MixSettings = MixSettings()): FloatArray {
         val hb = HeartbeatSynth.render(beats, durationMs)
-        val mixed = Mixer.mix(voice(hb.size, seed, minPitch), hb)
+        val mixed = Mixer.mix(voice(hb.size, seed, minPitch), hb, mix)
         return FloatArray(mixed.size) { mixed[it] / 32_768f }
     }
 
@@ -75,6 +77,16 @@ class BeatRecoveryTest {
             assertTrue("match $rate at $bpm BPM", rate >= 0.9)
             assertTrue("extra beats $extra", extra <= truth.size / 10)
         }
+    }
+
+    @Test
+    fun recoversAtTheVoiceHeavyEndOfTheTuningRange() {
+        // Loudest voice (0 dB) and quietest heartbeat (−12 dB) the Mix tuning screen allows.
+        val truth = beats(80.0, 6)
+        val pcm8k = degrade(mixedNote(truth, 6, 85.0, MixSettings(voiceGainDb = 0f, heartbeatGainDb = -12f)), 6)
+        val rate = BeatRecoveryCore.detect(pcm8k, durationMs)?.let { matchRate(truth, it.beatsMs) } ?: 0.0
+        println("recovery voice-heavy mix: ${"%.1f".format(rate * 100)}%")
+        assertTrue("voice-heavy $rate", rate >= 0.9)
     }
 
     @Test

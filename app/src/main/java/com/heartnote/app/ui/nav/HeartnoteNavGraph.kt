@@ -36,6 +36,7 @@ import com.heartnote.app.ui.record.RecordScreen
 object Routes {
     const val CONSENT = "consent"
     const val WELCOME = "welcome"
+    const val DEBUG_MIX = "debug/mix"
     const val TOUR = "tour?replay={replay}"
     fun tour(replay: Boolean) = "tour?replay=$replay"
     const val LIBRARY = "library"
@@ -130,6 +131,11 @@ fun HeartnoteNavGraph() {
         composable(Routes.HOLD, arguments = noteArg) {
             HoldScreen(onBack = { nav.popBackStack() })
         }
+        if (com.heartnote.app.BuildConfig.DEBUG) {
+            composable(Routes.DEBUG_MIX) {
+                com.heartnote.app.ui.debug.MixTuningScreen(onBack = { nav.popBackStack() })
+            }
+        }
     }
 
     if (showPrivacy) {
@@ -138,6 +144,10 @@ fun HeartnoteNavGraph() {
             onReplayTour = {
                 showPrivacy = false
                 nav.navigate(Routes.tour(replay = true))
+            },
+            onMixTuning = {
+                showPrivacy = false
+                nav.navigate(Routes.DEBUG_MIX)
             },
         )
     }

@@ -29,6 +29,8 @@ class HeartnoteApp : Application() {
         // The only haptics subscriber: one vibration per playback beat event,
         // however many screens are observing the bus. Live beats never vibrate.
         HapticsSettings.load(this)
+        // Debug builds may override the mix from the Mix tuning screen; release uses the defaults.
+        if (BuildConfig.DEBUG) com.heartnote.app.ui.debug.DebugMixPrefs.load(this)
         val haptics = HeartbeatHaptics(this)
         appScope.launch { BeatBus.events.collect { haptics.play(it) } }
     }

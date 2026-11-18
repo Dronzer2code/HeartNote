@@ -4,24 +4,48 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.abs
-import kotlin.math.min
+import kotlin.math.exp
+import kotlin.math.log10
+import kotlin.math.pow
 import kotlin.math.sign
+import kotlin.math.sqrt
 import kotlin.math.tanh
 
+/** Voice and heartbeat gains in dB (Fix 5). Defaults until tuned by ear on the phone speaker. */
+data class MixSettings(val voiceGainDb: Float = DEFAULT_VOICE_DB, val heartbeatGainDb: Float = DEFAULT_HEARTBEAT_DB) {
+    companion object {
+        const val DEFAULT_VOICE_DB = -9f
+        const val DEFAULT_HEARTBEAT_DB = 0f
+        val VOICE_RANGE = -18f..0f
+        val HEARTBEAT_RANGE = -12f..6f
+
+        /** Used by every new mix (in-app playback = the .m4a = the .mp4 audio). Debug tuning may override. */
+        @Volatile
+        var current = MixSettings()
+    }
+}
+
 /**
- * TRD § HEARTBEAT SYNTHESIS / Mixer: mixed = voice + heartbeat × 0.35, soft-clipped,
- * PCM16. The voice is first normalised (p99.9 → 0.7, at most +18 dB) because
- * phone mic levels vary widely and a quiet voice would be buried by the heartbeat.
+ * Loudness mix (2026-11-18, Fix 5): the heartbeat is the dominant sound, the
+ * voice stays clear but quieter.
+ * 1. Voice normalised to −24 dBFS RMS (gated: only 50 ms frames above −50 dBFS
+ *    count, so pauses don't inflate the gain; max +30 dB; silence untouched),
+ *    then × voice gain.
+ * 2. Heartbeat (SPEAKER preset, peak 1.0) scaled to peak −3 dBFS, × heartbeat gain.
+ * 3. Sum through a peak limiter at −1 dBFS (instant attack, 50 ms release), then
+ *    a soft clip at the same ceiling.
  */
 object Mixer {
-    /** SHARE_AND_IMPORT.md § AMPLIFIED HEARTBEAT (was 0.35); tune by ear on the phone speaker. */
-    const val HEARTBEAT_GAIN = 0.6f
-    private const val LIMIT = 0.95f
+    const val VOICE_RMS_DBFS = -24f
+    const val HEARTBEAT_PEAK_DBFS = -3f
+    const val LIMIT_DBFS = -1f
+    private const val GATE_DBFS = -50f
+    private const val MAX_NORMALISE_DB = 30f
+    private const val FRAME_MS = 50
     private const val RELEASE_MS = 50.0
-    private const val VOICE_TARGET = 0.7f
-    private const val MAX_VOICE_GAIN = 8f
-    private const val CLIP_KNEE = 0.9f
     private const val WAV_HEADER_SIZE = 44
+
+    private val limit = dbToLinear(LIMIT_DBFS)
 
     /** Reads PCM16 mono written by AudioCapture (fixed 44-byte header). */
     fun readWavPcm16(file: File): ShortArray {
@@ -32,45 +56,65 @@ object Mixer {
         return out
     }
 
-    fun voiceGain(voice: ShortArray): Float {
-        if (voice.isEmpty()) return 1f
-        val histogram = IntArray(32_769)
-        for (s in voice) histogram[min(abs(s.toInt()), 32_768)]++
-        val target = (voice.size * 0.999).toLong()
-        var seen = 0L
-        var level = 0
-        while (level < histogram.size - 1 && seen + histogram[level] <= target) {
-            seen += histogram[level]
-            level++
+    /** Gated RMS of [voice] in dBFS, or null when there is no speech above the gate. */
+    fun gatedRmsDbfs(voice: ShortArray, sampleRate: Int = 48_000): Float? {
+        val frame = sampleRate * FRAME_MS / 1000
+        val gate = dbToLinear(GATE_DBFS).toDouble()
+        var sum = 0.0
+        var count = 0L
+        var i = 0
+        while (i + frame <= voice.size) {
+            var e = 0.0
+            for (k in i until i + frame) {
+                val s = voice[k] / 32_768.0
+                e += s * s
+            }
+            if (sqrt(e / frame) > gate) {
+                sum += e
+                count += frame
+            }
+            i += frame
         }
-        if (level == 0) return 1f // silent input: leave as is
-        return (VOICE_TARGET * 32_768f / level).coerceIn(1f, MAX_VOICE_GAIN)
+        if (count == 0L) return null
+        return (20 * log10(sqrt(sum / count))).toFloat()
     }
 
-    /**
-     * voice (normalised) + heartbeat × [HEARTBEAT_GAIN], then a peak limiter
-     * (instant attack, 50 ms release) so beats landing on loud syllables duck
-     * smoothly instead of distorting the voice; soft clip as a final guard.
-     */
-    fun mix(voice: ShortArray, heartbeat: FloatArray, sampleRate: Int = 48_000): ShortArray {
-        val gain = voiceGain(voice)
-        val release = (1.0 - kotlin.math.exp(-1.0 / (RELEASE_MS / 1000.0 * sampleRate))).toFloat()
+    /** Linear gain that brings the voice to [VOICE_RMS_DBFS] and applies the voice gain. */
+    fun voiceGain(voice: ShortArray, settings: MixSettings = MixSettings.current): Float {
+        val rms = gatedRmsDbfs(voice) ?: return 1f // silent input: leave as is
+        val normalise = (VOICE_RMS_DBFS - rms).coerceAtMost(MAX_NORMALISE_DB)
+        return dbToLinear(normalise + settings.voiceGainDb)
+    }
+
+    fun heartbeatGain(settings: MixSettings = MixSettings.current): Float =
+        dbToLinear(HEARTBEAT_PEAK_DBFS + settings.heartbeatGainDb)
+
+    fun mix(
+        voice: ShortArray,
+        heartbeat: FloatArray,
+        settings: MixSettings = MixSettings.current,
+        sampleRate: Int = 48_000,
+    ): ShortArray {
+        val vg = voiceGain(voice, settings)
+        val hg = heartbeatGain(settings)
+        val release = (1.0 - exp(-1.0 / (RELEASE_MS / 1000.0 * sampleRate))).toFloat()
         var g = 1f
         return ShortArray(voice.size) { i ->
-            val v = voice[i] / 32_768f * gain
-            val h = if (i < heartbeat.size) heartbeat[i] * HEARTBEAT_GAIN else 0f
-            val x = v + h
-            val target = if (abs(x) > LIMIT) LIMIT / abs(x) else 1f
+            val x = voice[i] / 32_768f * vg + (if (i < heartbeat.size) heartbeat[i] * hg else 0f)
+            val target = if (abs(x) > limit) limit / abs(x) else 1f
             g = if (target < g) target else g + (1f - g) * release
-            (softClip(x * g) * 32_767f).toInt().toShort()
+            (softClip(x * g, limit) * 32_767f).toInt().toShort()
         }
     }
 
-    /** Linear below the knee, tanh above, never exceeding ±1. */
-    fun softClip(x: Float): Float {
+    /** Linear below 90% of [ceiling], tanh above, never exceeding ±[ceiling]. */
+    fun softClip(x: Float, ceiling: Float = 1f): Float {
+        val knee = 0.9f * ceiling
         val a = abs(x)
-        if (a <= CLIP_KNEE) return x
-        val room = 1f - CLIP_KNEE
-        return sign(x) * (CLIP_KNEE + room * tanh((a - CLIP_KNEE) / room))
+        if (a <= knee) return x
+        val room = ceiling - knee
+        return sign(x) * (knee + room * tanh((a - knee) / room))
     }
+
+    fun dbToLinear(db: Float): Float = 10f.pow(db / 20f)
 }

@@ -50,11 +50,30 @@ class AudioPipelineTest {
     }
 
     @Test
-    fun limiterKeepsLoudVoiceUnderFullScale() {
+    fun limiterKeepsTheSumUnderMinus1Dbfs() {
         val voice = ShortArray(48_000) { (kotlin.math.sin(it / 20.0) * 30_000).toInt().toShort() }
         val heartbeat = HeartbeatSynth.render(listOf(100, 900), 1_000)
-        val mixed = Mixer.mix(voice, heartbeat)
-        assertTrue(mixed.all { abs(it.toInt()) <= (0.97 * 32_767).toInt() })
+        val mixed = Mixer.mix(voice, heartbeat, MixSettings(voiceGainDb = 0f, heartbeatGainDb = 6f))
+        val ceiling = (Mixer.dbToLinear(Mixer.LIMIT_DBFS) * 32_767).toInt() + 1
+        assertTrue(mixed.all { abs(it.toInt()) <= ceiling })
+    }
+
+    @Test
+    fun voiceIsNormalisedToMinus24DbfsRmsThenGained() {
+        for (amplitude in listOf(800.0, 3_000.0, 20_000.0)) {
+            val voice = ShortArray(48_000 * 2) { (kotlin.math.sin(it * 2 * Math.PI * 180 / 48_000) * amplitude).toInt().toShort() }
+            val out = Mixer.mix(voice, FloatArray(0), MixSettings(voiceGainDb = -9f))
+            val rms = Mixer.gatedRmsDbfs(out)!!
+            assertEquals("amplitude $amplitude", -33f, rms, 0.5f) // −24 dBFS − 9 dB
+        }
+    }
+
+    @Test
+    fun heartbeatPeaksAtMinus3Dbfs() {
+        val hb = HeartbeatSynth.render(listOf(100), 1_000)
+        val out = Mixer.mix(ShortArray(48_000), hb, MixSettings(heartbeatGainDb = 0f))
+        val peakDb = 20 * kotlin.math.log10(out.maxOf { abs(it.toInt()) } / 32_767.0)
+        assertEquals(-3.0, peakDb, 0.3)
     }
 
     @Test
@@ -73,9 +92,7 @@ class AudioPipelineTest {
     }
 
     @Test
-    fun quietVoiceIsBoostedSilentVoiceIsNot() {
-        val quiet = ShortArray(48_000) { (if (it % 2 == 0) 2_000 else -2_000).toShort() }
-        assertEquals(8f, Mixer.voiceGain(quiet), 0.01f) // capped at +18 dB
+    fun silentVoiceIsLeftAlone() {
         assertEquals(1f, Mixer.voiceGain(ShortArray(48_000)), 0f)
     }
 
