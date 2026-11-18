@@ -174,3 +174,24 @@ Done:
 - JVM proxy result (speech-like voice at the real mix gain, 8 kHz band limit + noise): **100% of beats within ±60 ms, 0 extra** at 62/78/96 BPM, at 72 BPM with a deep (≥85 Hz) voice, and for CLASSIC-sound notes; voice-only audio is refused.
 
 Not done — needs the phone: the § BEAT RECOVERY on-device test (export → WhatsApp **as media** → re-import → match rate vs original). The emulator was stopped by Claude Code for low memory and not restarted; WhatsApp needs a real phone anyway.
+
+## 2026-11-18 — Step 6: docs + validation
+
+Done: PRD (F1 flow, F9 revised, F12→F13, F13, F14, F15, C7), TRD (project structure, SPEAKER preset, mixer, sharing/import/payload/video/recovery, voice.wav retention, consent additions), PROCESS_FLOW (first-launch journey, Share + Import flows, lifecycle), DESIGN (screen map, Library Import slot + groups, WelcomeChoice/Tour, share sheet, video frame), MVP scope, README sharing/privacy, SUBMISSION consent section. 37 unit tests pass; forbidden-word check clean.
+
+### ONBOARDING.md validation
+- [needs phone] Fresh install: Consent → WelcomeChoice → Skip → Library is empty.
+- [needs phone] Fresh install: Consent → Tour → Start → Library is empty.
+- [BLOCKED — developer decision] Updating an install that had the "demo" note: R-O2 migration not implemented (see Step 1).
+- [needs phone] Replay tour from the Privacy & about sheet.
+- [PASS] No bundled audio/signal demo files in the APK (assets = SDK models + licences only).
+
+### SHARE_AND_IMPORT.md validation
+- [needs phone] Video plays in Google Photos and a WhatsApp chat (as media) with voice + audible heartbeat on the speaker.
+- [needs phone] Video as WhatsApp Document → import → beatSource "trace", vibration matches.
+- [needs phone] Video as WhatsApp media → import → "recovered", ≥ 90% within ±60 ms (JVM proxy: 100%); write the result into TRD.md.
+- [needs phone] Audio only (.m4a) as Document → imports with payload.
+- [needs phone] Random non-Heartnote video → refused (JVM: voice-only audio is refused).
+- [needs phone] 60 s video ≤ 16 MB (expected ≈ 14.5 MB at 1.8 Mbps + 128 kbps), finishes, cancellable.
+- [PASS] Payload JSON contains only the § PAYLOAD fields (unit test).
+- [PASS, code] Share sheet shows the disclosure line (string `share_disclosure`, always rendered).

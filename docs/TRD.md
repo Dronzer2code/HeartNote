@@ -65,9 +65,17 @@ heartnote/
 │       │   └── NoteProcessor.kt         # F6 processing pipeline (PROCESS_FLOW steps 1–8)
 │       ├── ui/beat/BeatBus.kt           # SharedFlow<BeatEvent> (DESIGN.md § BEAT SYNC)
 │       ├── ui/playback/NotePlayer.kt    # ExoPlayer + 10 ms beat cursor, shared with HoldScreen
-│       └── share/ShareHelper.kt         # FileProvider + ACTION_SEND
+│       ├── share/ShareHelper.kt         # FileProvider + ACTION_SEND
+│       ├── share/HeartnotePayload.kt    # gzip JSON payload (SHARE_AND_IMPORT.md § PAYLOAD)
+│       ├── share/PayloadTrack.kt        # remux pass: adds/reads the application/x-heartnote track
+│       ├── share/ShareExports.kt        # share files (audio with payload, cached video)
+│       ├── share/ImportManager.kt       # F14 import + ImportRequests (share target / open-with)
+│       ├── share/BeatRecovery.kt        # decode for recovery; BeatRecoveryCore.kt = algorithm
+│       ├── export/HeartnoteVideoFrame.kt     # one 720×1280 video frame
+│       ├── export/HeartnoteVideoExporter.kt  # F13 encoder (MediaCodec Option B)
+│       ├── ui/onboarding/WelcomeChoiceScreen.kt, TourScreen.kt, GeneratedBeats.kt  # F15
 ├── app/src/main/res/xml/file_paths.xml  # FileProvider paths
-├── docs/ (PRD.md, MVP.md, TRD.md, PROCESS_FLOW.md)
+├── docs/ (PRD.md, MVP.md, TRD.md, PROCESS_FLOW.md, ONBOARDING.md, SHARE_AND_IMPORT.md, PROGRESS.md, SUBMISSION.md, design/DESIGN.md)
 ├── CLAUDE.md
 └── README.md
 ```
@@ -199,9 +207,9 @@ Per beat at time `t`, with interval `RR` to the next beat:
 - **Lub**: 55 Hz sine × exponential decay (τ = 40 ms), duration 120 ms, gain 1.0.
 - **Dub**: 70 Hz sine × exponential decay (τ = 30 ms), duration 90 ms, gain 0.6, at `t + clamp(0.3 × RR, 200 ms, 350 ms)`.
 - Low-pass 150 Hz (one-pole). Output 48 kHz mono float.
-- DEVIATION (2026-11-17, `HeartbeatSynth.SPEAKER_HARMONICS`): each beat also carries its 2nd–4th harmonics (gains 0.5, 0.3, 0.15, peak-normalised), because phone speakers reproduce little below ~200 Hz and a pure 55/70 Hz sine is near-inaudible on them; the harmonics let the ear infer the low fundamental. Fundamentals, envelopes and timing are unchanged. MUST be checked by ear on the test device; set the flag to `false` for the pure TRD sound.
+- UPDATED 2026-11-18 (SHARE_AND_IMPORT.md § AMPLIFIED HEARTBEAT): every new mix uses `Preset.SPEAKER` — lub 55 Hz + 110 Hz (0.5) + 165 Hz (0.25), τ 40 ms, plus an 8 ms Hann-windowed 800 Hz transient at 0.15; dub 70/140/210 Hz at 0.6 of the lub. No 150 Hz low-pass in this preset (it would remove the transient). `Preset.CLASSIC` is the original pure-sine sound above. Notes made earlier keep their mix. MUST be tuned by ear on the phone speaker.
 
-`Mixer.kt`: `mixed = voice + heartbeat × 0.35` (≈ −9 dB, tunable), soft-clip (linear to 0.9, tanh above) to [−1, 1], convert to PCM16. The voice is first normalised so its 99.9th-percentile level is 0.7 (gain 1–8×, i.e. at most +18 dB) because phone mic levels vary; a silent voice is left untouched.
+`Mixer.kt`: `mixed = voice + heartbeat × 0.6` (was 0.35; tune by ear, the voice must stay clear), then a peak limiter (instant attack, 50 ms release, ceiling 0.95), then soft-clip (linear to 0.9, tanh above), convert to PCM16. The voice is first normalised so its 99.9th-percentile level is 0.7 (gain 1–8×, i.e. at most +18 dB) because phone mic levels vary; a silent voice is left untouched.
 
 Silent microphone (found 2026-11-17): the developer's first 60 s device recording produced an all-zero `voice.wav` (2,892,480 samples, every one 0). Android delivers digital silence, not an error, when the mic privacy toggle is off or another app holds the mic. `AudioCapture.peakAbs` tracks the loudest sample; RecordViewModel discards the recording after 2 s of exact silence and shows `record_error_mic_silent`. Root cause on the test device: UNKNOWN until the phone is reconnected.
 
@@ -227,7 +235,17 @@ Sync: a coroutine polls `ExoPlayer.currentPosition` every 10 ms and fires each b
 - Verified on the emulator (Android 16): the developer's 60 s recording exports to a 980 KB `.m4a`, plays in ExoPlayer, and fires ~2 haptic events per beat.
 - Unfinished notes (raw `voice.wav` + `signals.json`, no `heartnote.m4a` — app killed during Processing, or the Failed screen was left) are completed by the Library on its next start, one attempt per note per process.
 - Generated at save time (F6) so playback and share use the same file.
-- `ShareHelper.kt`: `FileProvider.getUriForFile`, `Intent.ACTION_SEND`, type `audio/mp4`, `FLAG_GRANT_READ_URI_PERMISSION`.
+- `ShareHelper.kt`: `FileProvider.getUriForFile`, `Intent.ACTION_SEND`, type `audio/mp4` or `video/mp4`, `FLAG_GRANT_READ_URI_PERMISSION`.
+
+### Sharing and import (2026-11-18, SHARE_AND_IMPORT.md)
+
+- Shared files are built at share time in `notes/<id>/share/`: `Heartnote for <title>.m4a` (remuxed `heartnote.m4a` + payload track) and `Heartnote for <title>.mp4` (F13, cached until rename). The in-app `heartnote.m4a` is never modified. Received notes are re-shared only as their original file.
+- Payload: `application/x-heartnote` MP4 metadata track, one sample at 0 µs, gzip JSON with exactly `format, version, title, createdAt, durationMs, beatSource, beatsMs, smiles, dotColumns` (unit-tested; no trace, pulse rate, breathing or expressions). `dotColumns` = 200 ms DotChartData columns.
+- Video (F13): Option B — H.264 Baseline (no B-frames), 720×1280, 30 fps, 1 s I-frame interval, surface input drawn with `lockHardwareCanvas`, PTS rewritten to frame × 33,333 µs, AAC copied from `heartnote.m4a`, then the payload remux. Media3 1.11.1 Option A APIs were verified with javap (`CanvasOverlay(boolean)`/`onDraw(Canvas, long)`, `EditedMediaItem.Builder.setDurationUs/setFrameRate`, multi-sequence `Composition`) and fit, but B was chosen: no new dependencies and exact, deterministic frame timing. Video bit rate 1.8 Mbps (spec 2 Mbps) for headroom under 16 MB per 60 s. Frames come from `ParticleEngine.renderAt` (deterministic, unit-tested).
+- Import (F14): `ImportManager` copies the file to `notes/<id>/received.<ext>`, reads the payload track or runs `BeatRecovery`, writes `signals.json` (beats, smiles, `dotColumns`; empty `raw`) and `meta.json` (`origin = "received"`, `receivedFile`). Entry points: Library Import action (`ACTION_OPEN_DOCUMENT`), `ACTION_SEND` (video/*, audio/*, octet-stream), `ACTION_VIEW` (content video/mp4, audio/mp4). Incoming intents wait in `ImportRequests` until the Library (after consent) imports them.
+- Beat recovery (no payload): decode → mono 8 kHz → band-pass **40–100 Hz** (spec: 40–220 Hz; at 220 Hz voice fundamentals correlate like beats — beats p10 NCC 0.39 vs voice-only max 0.46 — at 100 Hz beats p10 0.77 vs voice max 0.49) → NCC with the SPEAKER lub/dub templates (run at 2 kHz after the band-pass) → threshold max(0.6, median + 4·MAD over 4 s) → 333 ms spacing → dub within clamp(0.3·RR, 200, 350) ± 40 ms → rhythm-guided gap search (relaxed floor near expected beat times) → RR 333–1500 ms → refuse if < 10 beats or BPM outside 40–180. `beatSource = "recovered"`, `dotColumns` 1.0 at beat columns else 0.25.
+- **Beat-recovery match rate:** JVM proxy (speech-like voice at the real mix gain, 8 kHz band limit + noise, `BeatRecoveryTest`): 100% of beats within ±60 ms, 0 extra, at 62/78/96 BPM, with a deep (≥85 Hz) voice, and for CLASSIC notes; voice-only audio refused. **On-device WhatsApp-as-media result: UNKNOWN — not yet measured** (needs the phone).
+- MediaMuxer metadata-track write + MediaExtractor read-back: documented Android behaviour (API 26+), **not yet verified on a device**.
 
 ## DATA MODEL (`data/Heartnote.kt`)
 
@@ -235,8 +253,10 @@ Storage root: `context.filesDir/notes/<id>/` where `<id>` is a UUID.
 
 | File | Content |
 |---|---|
-| `voice.wav` | Raw voice. Deleted after successful export (DECISION). |
-| `heartnote.m4a` | Mixed voice + heartbeat. Playback + share source. |
+| `voice.wav` | Raw voice. KEPT after export from 2026-11-18 (reverses the earlier delete decision) so notes can be re-mixed and re-exported. |
+| `heartnote.m4a` | Mixed voice + heartbeat. Playback source; shared copies are built from it. |
+| `share/` | Files built for sharing (`Heartnote for <title>.m4a` / `.mp4`, both with payload). |
+| `received.<ext>` | Received notes only: the imported file, played as-is. |
 | `signals.json` | Signal track (schema below). |
 | `meta.json` | id, title, createdAt, durationMs, plus beatCount, beatSource, smileCount so the Library never parses `signals.json`. Default title `you` (heading reads "Heartnote for you"). |
 
@@ -283,10 +303,11 @@ Source for the DEV post's required section and for `ConsentScreen.kt` copy.
 - Camera consent: requested only after the user accepts the F1 explanation. The user confirms they are recording themselves before every recording (F2).
 - Not stored: camera frames or video (`imageOutputEnabled = false`; no frame writes).
 - Stored on-device only: voice audio, mixed `.m4a`, beat timestamps, breathing curve, pulse rate samples, smile segments.
-- Sharing: only when the user taps Share; only the `.m4a` file is shared. Signal data is never shared.
+- Sharing: only when the user taps Share; only the chosen file (`.mp4` video or `.m4a` audio) is shared. Shared files contain the sender's voice, the heartbeat sound, the beat timing and display values (payload), and no raw camera-derived signals (no trace, no pulse-rate samples, no breathing, no expressions).
+- Import: always user-initiated (picker, share target or "Open with"). Received notes are stored only on the recipient's phone and can be deleted at any time.
 - Retention: until the user deletes the note. Uninstalling removes all data.
 - Deletion: Delete removes every file of that note.
-- Heartnote servers: none. Heartnote sends no data anywhere.
+- Heartnote servers: none; no accounts. Heartnote sends no data anywhere.
 - SDK telemetry: UNKNOWN. MUST be filled from Presage's Telemetry and Privacy docs before submission. The API key requires network access.
 - Optional AI services: none.
 - Not a medical device; no health interpretation is shown.

@@ -38,7 +38,7 @@ Feature IDs are referenced by `MVP.md`, `TRD.md`, and `PROCESS_FLOW.md`.
 
 | ID | Feature | Description |
 |---|---|---|
-| F1 | Consent onboarding | First-launch screens explaining what the camera measures, what is stored, what is not stored, and that the app is not a medical device. User MUST accept before camera access is requested. |
+| F1 | Consent onboarding | First-launch screens explaining what the camera measures, what is stored, what is not stored, and that the app is not a medical device. User MUST accept before camera access is requested. Flow: Consent → WelcomeChoice (F15) → Tour or Library. Nothing pre-recorded is ever added to the library. |
 | F2 | Self-recording gate | Before each recording, the user confirms they are recording themselves. Recording MUST NOT start unless a face is detected by the SDK. |
 | F3 | Pulse lock-on | Before speech begins, a short still phase waits until the SDK returns cardio data. UI shows "Hold still — finding your pulse". |
 | F4 | Record Heartnote | Records microphone audio and SmartSpectra signals (pulse, breathing, expressions) on one shared timeline. |
@@ -46,10 +46,13 @@ Feature IDs are referenced by `MVP.md`, `TRD.md`, and `PROCESS_FLOW.md`.
 | F6 | Save note | Stores audio + extracted beat timestamps + breathing curve + smile moments locally. Video frames are never stored. |
 | F7 | Playback | Plays voice + synthesized heartbeat sound at the recorded beat times, fires a vibration on each beat, animates a glow following the breathing curve. |
 | F8 | Smile moments | Marks timeline segments where the SDK's `HAPPY` expression confidence was high. Shown as markers on the playback timeline. |
-| F9 | Export & share | Renders voice + heartbeat into one `.m4a` file and opens the Android share sheet. |
+| F9 | Export & share (revised 2026-11-18) | Share sheet with two choices: **Video** (recommended; F13) and **Audio only** (`.m4a`). Both files carry a heartbeat-timing payload so Heartnote can replay the full experience (`SHARE_AND_IMPORT.md`). |
 | F10 | Library & delete | Lists saved notes. Delete removes all files belonging to a note. |
 | F11 | Hold mode | Full-screen, screen-dimmed playback intended for holding the phone or placing it on a pillow. Post-MVP. |
-| F12 | Video export | Exports `.mp4` with animated waveform + mixed audio. Post-MVP. |
+| F12 | Video export | Superseded by F13. |
+| F13 | Heartnote video | `.mp4` with a rendered beating particle heart, the mixed audio and an embedded heartbeat payload; plays anywhere (`SHARE_AND_IMPORT.md`). |
+| F14 | Import | Open a received Heartnote `.mp4`/`.m4a` (picker, share target, "Open with") and replay it with sound, vibration and visuals. Beats come from the payload, or are recovered from the audio when a messenger stripped it. |
+| F15 | Optional tour | After consent, a WelcomeChoice offers a skippable 3-page tour with generated data only; replayable from Privacy & about (`ONBOARDING.md`). |
 
 ## REQUIREMENTS
 
@@ -69,6 +72,7 @@ Feature IDs are referenced by `MVP.md`, `TRD.md`, and `PROCESS_FLOW.md`.
 - C4: MUST NOT commit the Presage API key to the public repository.
 - C5: MUST NOT use HRV in any user-facing feature (avoids health-interpretation risk).
 - C6: Recipient-side features MUST NOT require network access.
+- C7: No accounts, login, servers or cloud storage. Sharing is file-based; import is always user-initiated.
 
 ## NON-GOALS
 

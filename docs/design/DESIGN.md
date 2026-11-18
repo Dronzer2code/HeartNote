@@ -23,6 +23,10 @@ An agent implementing or changing any UI MUST follow this file. Product rules ar
 | `ref-screens.webp` right | PlaybackScreen | `ui/playback/PlaybackScreen.kt` | F7, F8, F9 |
 | `ref-heart.png` | HoldScreen | `ui/hold/HoldScreen.kt` | F11 |
 | none (derived style) | ConsentScreen | `ui/onboarding/ConsentScreen.kt` | F1 |
+| none (derived style) | WelcomeChoiceScreen | `ui/onboarding/WelcomeChoiceScreen.kt` | F15 (`ONBOARDING.md`) |
+| none (derived style) | TourScreen | `ui/onboarding/TourScreen.kt` | F15 (`ONBOARDING.md`) |
+| none (derived style) | Share sheet | `ui/playback/ShareSheet.kt` | F9, F13 |
+| `ref-heart.png` look | Video frame | `export/HeartnoteVideoFrame.kt` | F13 |
 
 ## DESIGN TOKENS
 
@@ -93,7 +97,8 @@ Layout top to bottom:
 3. Latest-note card (white, radius 28): title = note title, subtitle = `Today • Nov 17, 2026` format. Top-right `CircleIconButton(history)` → scrolls to the full list. Right-aligned `DotMatrixNumber` = beat count of the note, caption row: `Heartbeats` (left) and `beats` (right) in 13 sp `InkGrey`. Bottom: `DotBarChart` 9 rows × 36 columns of the note's beat envelope (see § DATA FOR DOT CHARTS).
 4. Below: compact list of older notes (white rows, radius 20, title + date + duration).
 5. Empty state (no notes): card shows `DotMatrixNumber("--")` and text `Record your first Heartnote`.
-6. `ArcNavBar`: outer-left = Privacy (shield), inner-left = Hold latest (hand-heart icon), centre = Record (pulse icon, label `Record`), inner-right = Share latest, outer-right = About (info icon).
+6. `ArcNavBar`: outer-left = Privacy (shield), inner-left = Hold latest (hand-heart icon), centre = Record (pulse icon, label `Record`), inner-right = Share latest, outer-right = **Import** (Lucide `import` icon; About moved into the "Privacy & about" sheet, which also has `Replay tour`).
+7. Below the card, notes are grouped under 13 sp `InkGrey` headers `Yours` and `Received`. A received note's subtitle reads `Received • <date>`. Import progress / errors show as a black rounded banner at the top.
 
 Reference text that MUST be replaced: `Alex Smith`, `Patient`, `Check Your / Heart's Health`, `ECG`, `Heart Rate`, `bpm`, `Dashboard`.
 
@@ -147,6 +152,19 @@ Full-screen, immersive (system bars hidden), keep screen on.
 6. Plays the note with sound + haptics, same sync as PlaybackScreen.
 
 The reference's four info cards (`R-R Interval`, `Signal Quality`, `Status`, `R-R Variability`) and `ECG Results / Monitor heart health` MUST NOT be reproduced in any form.
+
+### WelcomeChoice and Tour (ONBOARDING.md)
+
+- WelcomeChoice: `LightBg`, `TwoToneHeading("Welcome to", "Heartnote")`, 13 sp `InkGrey` line, black 56 dp pill `Take the 30-second tour`, text button `Skip`.
+- Tour: `HorizontalPager` with 3 pages, red/`DotIdle` page dots, `Skip` top-right on every page, black pill `Next` (pages 1–2) / `Start` + text button `Feel a sample beat` (page 3). Each page: a 240 dp `DarkBg` stage (radius 28) holding the 200 dp visual (sphere / dot row / particle heart) because the particle components are designed for dark backgrounds, then a two-tone heading and grey body.
+
+### Share sheet (F9 revised, SHARE_AND_IMPORT.md)
+
+White `ModalBottomSheet`, 28 dp top radius, Inter. Title `Share`; option rows (`CardTint`, radius 20, white 52 dp icon circle): `Video` / `Plays anywhere. Opens in Heartnote with the heartbeat you can feel.` (first) and `Audio only` / `Voice and heartbeat sound.` While the video renders: `DotRed` linear progress, `Making the video… n%`, `Cancel`; on failure `Couldn't make the video` + `Retry`. Footer lines 12 sp `InkGrey`: the WhatsApp-Document tip and the MUST disclosure `Shared files include your heartbeat timing so Heartnote can replay it.`
+
+### Video frame (F13)
+
+720 × 1280, 30 fps, the HoldScreen look offscreen: top radial gradient (`HoldGlow` → `HoldDeep` 45% → black) with the +15% lub flash, a soft `HeartRed` radial-gradient disc as glow (no blur), `ParticleHeart` centred via `ParticleEngine.renderAt`, note title (Inter SemiBold) at the top, `DotMatrixNumber`-style beats-played counter + caption `beats`, footer `Open in Heartnote to feel this heartbeat` + red-dot `Heartnote` wordmark; the last 2 s fade into an end card with the footer line large. No pulse numbers.
 
 ### ConsentScreen (no reference; derived style)
 

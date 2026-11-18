@@ -59,6 +59,10 @@ Or open the project in Android Studio and press Run with your phone connected (U
 
 No storage permission: notes live in the app's private storage and are excluded from cloud backup and device transfer.
 
+## Sharing
+
+Share a note as a **video** (plays in any chat: your voice, the heartbeat sound and the beating particle heart) or **audio only**. Both files carry the beat timing, so a recipient who opens the file in Heartnote — "Share → Heartnote", "Open with", or the Library's Import button — feels the heartbeat as vibration too. On WhatsApp, send it as a **Document** to keep that data; if it was sent as media, Heartnote recovers the beats from the heartbeat sound in the audio.
+
 ## How it responds to human signals
 
 | Signal (SmartSpectra) | Heartnote |
@@ -75,7 +79,8 @@ The heartbeat you hear is *synthesized* at your measured beat times; it is not a
 
 - Camera frames and video are never stored.
 - Stored on the phone only: the voice/heartbeat audio, beat times, breathing curve, pulse-rate samples and smile moments.
-- Nothing is shared unless you tap Share, and then only the audio file.
+- Nothing is shared unless you tap Share, and then only the file you pick: a Heartnote video or audio. It contains your voice, the heartbeat sound and the beat timing (so Heartnote can replay the vibration) — no raw camera-derived signals.
+- Received Heartnotes are imported only when you choose to, and stay on your phone.
 - Delete removes every file of a note; uninstalling removes everything.
 - Heartnote has no servers. The SmartSpectra SDK uses the internet to check the API key — see Presage's privacy policy.
 

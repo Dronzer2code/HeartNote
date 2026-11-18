@@ -26,7 +26,9 @@ Feature IDs (F1–F12) are defined in `PRD.md`. Implementation details are in `T
 | F9 Export & share (.m4a) | MUST | Enables recipients without the app. |
 | F10 Library & delete | MUST | Delete is required by data-handling claims. |
 | F11 Hold mode | MAY | Only if day 5 finishes early. |
-| F12 Video export (.mp4) | OUT | Post-challenge. |
+| F12 Video export (.mp4) | OUT → replaced by F13 | Superseded by F13 Heartnote video (in scope from 2026-11-18, `SHARE_AND_IMPORT.md`). |
+| F13 Heartnote video, F14 Import | SHOULD (added 2026-11-18) | Restores vibration + visuals for recipients. |
+| F15 Optional tour | SHOULD (added 2026-11-18) | `ONBOARDING.md`. |
 
 ## DAY PLAN
 

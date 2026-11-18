@@ -51,13 +51,14 @@ Native Android, Kotlin 2.2, Jetpack Compose. Setup (API key in `local.properties
 
 Source: `TRD.md` § CONSENT AND DATA HANDLING.
 
-- **Consent:** on first launch, a consent screen explains what the camera measures and what is stored. Camera and microphone permissions are requested only after the user taps "I understand". Before every recording the user confirms "I am recording myself", and recording cannot start without a face in view.
+- **Consent:** on first launch, a consent screen explains what the camera measures and what is stored. An optional tour follows (skippable; it uses only generated data and never records or plays a real person). Camera and microphone permissions are requested only after the user taps "I understand". Before every recording the user confirms "I am recording myself", and recording cannot start without a face in view.
 - **Not stored:** camera frames or video (`imageOutputEnabled = false`; no frames are written anywhere).
 - **Stored on the device only:** voice audio, the mixed `.m4a`, beat timestamps, breathing curve, pulse-rate samples and smile segments. App data is excluded from cloud backup and device transfer.
-- **Sharing:** only when the user taps Share, and only the `.m4a` audio file. Signal data is never shared.
+- **Sharing:** only when the user taps Share, and only the chosen file — a Heartnote video (`.mp4`) or audio (`.m4a`). Shared files contain the sender's voice, the heartbeat sound, the beat timing and display values so Heartnote can replay the vibration; they contain **no raw camera-derived signals** (no pulse waveform, no pulse-rate samples, no breathing, no expressions). The share sheet says so: "Shared files include your heartbeat timing so Heartnote can replay it."
+- **Receiving:** import is always user-initiated (file picker, "Share → Heartnote", or "Open with"). Received notes are stored only on the recipient's phone and can be deleted at any time.
 - **Retention:** until the user deletes the note; uninstalling removes all data.
 - **Deletion:** Delete removes every file of that note.
-- **Heartnote servers:** none. Heartnote sends no data anywhere.
+- **Heartnote servers:** none, and no accounts. Heartnote sends no data anywhere; files travel only through apps the user chooses (WhatsApp, email, Nearby Share…).
 - **SDK telemetry:** TODO — fill in from Presage's Telemetry and Privacy docs (the SDK has a `config.enableTelemetry` switch; the API key needs network access).
 - **Optional AI services:** none.
 - **Not a medical device;** no health interpretation is shown.
