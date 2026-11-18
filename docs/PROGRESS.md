@@ -142,3 +142,13 @@ Done:
 - Playback/Hold play the received file; labels "Timed to their measured pulse" / "Recovered from the shared file"; Hold mini trace drawn from beat times for received notes.
 
 Needs the phone: the MediaMuxer metadata track round trip (write → WhatsApp Document → MediaExtractor read) is documented Android behaviour but untested here; WhatsApp-as-Document import test.
+
+## 2026-11-18 — Step 3: amplified heartbeat
+
+Done:
+- `HeartbeatSynth.Preset.SPEAKER` (default for every new mix): 55/110/165 Hz lub (gains 1/0.5/0.25), 70/140/210 Hz dub at 0.6, plus an 8 ms Hann-windowed 800 Hz transient at 0.15; no 150 Hz low-pass (it would remove the transient). `Preset.CLASSIC` keeps the original TRD sound.
+- Mixer: heartbeat × 0.6 (was 0.35) with a peak limiter (instant attack, 50 ms release) before the soft clip.
+- `voice.wav` is kept after export (notes can be re-mixed/re-exported). Notes made earlier keep their mix.
+- 2 new unit tests (transient + harmonics present; limiter keeps a loud voice under full scale). `testdata/private/heartbeat-preview.wav` regenerated with the new sound.
+
+Needs the phone: tune `Mixer.HEARTBEAT_GAIN` by ear on the speaker with a real voice recording (the existing test recording's voice track is silent).

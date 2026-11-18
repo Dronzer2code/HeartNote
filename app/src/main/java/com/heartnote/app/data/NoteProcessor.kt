@@ -57,13 +57,15 @@ class NoteProcessor(private val repository: NoteRepository) {
             meta
         }
 
-    /** Steps 5–8: synth, mix, export heartnote.m4a, then delete voice.wav. */
+    /**
+     * Steps 5–7: synth, mix, export heartnote.m4a. voice.wav is KEPT
+     * (SHARE_AND_IMPORT.md: notes can be re-mixed and re-exported).
+     */
     suspend fun render(noteId: String, signals: SignalsFile = repository.readSignals(noteId)) =
         withContext(Dispatchers.Default) {
             val voice = Mixer.readWavPcm16(repository.voiceFile(noteId))
             val heartbeat = HeartbeatSynth.render(signals.beatsMs, signals.durationMs)
             val mixed = Mixer.mix(voice, heartbeat)
             AacExporter.export(mixed, HeartbeatSynth.SAMPLE_RATE, repository.audioFile(noteId))
-            repository.voiceFile(noteId).delete()
         }
 }

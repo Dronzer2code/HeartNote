@@ -14,7 +14,10 @@ import kotlin.math.tanh
  * phone mic levels vary widely and a quiet voice would be buried by the heartbeat.
  */
 object Mixer {
-    const val HEARTBEAT_GAIN = 0.35f
+    /** SHARE_AND_IMPORT.md § AMPLIFIED HEARTBEAT (was 0.35); tune by ear on the phone speaker. */
+    const val HEARTBEAT_GAIN = 0.6f
+    private const val LIMIT = 0.95f
+    private const val RELEASE_MS = 50.0
     private const val VOICE_TARGET = 0.7f
     private const val MAX_VOICE_GAIN = 8f
     private const val CLIP_KNEE = 0.9f
@@ -44,12 +47,22 @@ object Mixer {
         return (VOICE_TARGET * 32_768f / level).coerceIn(1f, MAX_VOICE_GAIN)
     }
 
-    fun mix(voice: ShortArray, heartbeat: FloatArray): ShortArray {
+    /**
+     * voice (normalised) + heartbeat × [HEARTBEAT_GAIN], then a peak limiter
+     * (instant attack, 50 ms release) so beats landing on loud syllables duck
+     * smoothly instead of distorting the voice; soft clip as a final guard.
+     */
+    fun mix(voice: ShortArray, heartbeat: FloatArray, sampleRate: Int = 48_000): ShortArray {
         val gain = voiceGain(voice)
+        val release = (1.0 - kotlin.math.exp(-1.0 / (RELEASE_MS / 1000.0 * sampleRate))).toFloat()
+        var g = 1f
         return ShortArray(voice.size) { i ->
             val v = voice[i] / 32_768f * gain
             val h = if (i < heartbeat.size) heartbeat[i] * HEARTBEAT_GAIN else 0f
-            (softClip(v + h) * 32_767f).toInt().toShort()
+            val x = v + h
+            val target = if (abs(x) > LIMIT) LIMIT / abs(x) else 1f
+            g = if (target < g) target else g + (1f - g) * release
+            (softClip(x * g) * 32_767f).toInt().toShort()
         }
     }
 

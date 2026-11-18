@@ -26,6 +26,38 @@ class AudioPipelineTest {
     }
 
     @Test
+    fun speakerPresetHasAnAudibleTransientClassicDoesNot() {
+        fun energyAt(pcm: FloatArray, hz: Double, from: Int, samples: Int): Double {
+            // Goertzel power over pcm[from, from + samples).
+            val k = 2 * Math.cos(2 * Math.PI * hz / HeartbeatSynth.SAMPLE_RATE)
+            var s1 = 0.0
+            var s2 = 0.0
+            for (i in from until from + samples) {
+                val s0 = pcm[i] + k * s1 - s2
+                s2 = s1
+                s1 = s0
+            }
+            return s1 * s1 + s2 * s2 - k * s1 * s2
+        }
+        val n = HeartbeatSynth.msToSamples(8.0)
+        val speaker = HeartbeatSynth.lubTemplate(HeartbeatSynth.Preset.SPEAKER)
+        val classic = HeartbeatSynth.lubTemplate(HeartbeatSynth.Preset.CLASSIC)
+        // The 800 Hz knock (gain 0.15) in the first 8 ms. Measured ≈ 3.7× CLASSIC; over such a
+        // short window the low harmonics' spectral leakage is of the same order, hence 2×.
+        assertTrue(energyAt(speaker, 800.0, 0, n) > 2 * energyAt(classic, 800.0, 0, n))
+        // Harmonics present (2nd at 0.5 amplitude ≈ 0.25 power of the fundamental).
+        assertTrue(energyAt(speaker, 110.0, 0, speaker.size) > 0.1 * energyAt(speaker, 55.0, 0, speaker.size))
+    }
+
+    @Test
+    fun limiterKeepsLoudVoiceUnderFullScale() {
+        val voice = ShortArray(48_000) { (kotlin.math.sin(it / 20.0) * 30_000).toInt().toShort() }
+        val heartbeat = HeartbeatSynth.render(listOf(100, 900), 1_000)
+        val mixed = Mixer.mix(voice, heartbeat)
+        assertTrue(mixed.all { abs(it.toInt()) <= (0.97 * 32_767).toInt() })
+    }
+
+    @Test
     fun dubDelayIsClamped() {
         assertEquals(200L, HeartbeatSynth.dubDelayMs(400))
         assertEquals(350L, HeartbeatSynth.dubDelayMs(1_400))
