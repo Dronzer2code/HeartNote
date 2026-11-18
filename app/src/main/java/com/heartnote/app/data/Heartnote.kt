@@ -12,7 +12,18 @@ data class NoteMeta(
     val beatCount: Int = 0,
     val beatSource: String = "rate",
     val smileCount: Int = 0,
-)
+    /** "recorded" (made on this phone) or "received" (imported, SHARE_AND_IMPORT.md F14). */
+    val origin: String = ORIGIN_RECORDED,
+    /** Received notes: the imported file inside the note folder, e.g. `received.mp4`. */
+    val receivedFile: String? = null,
+) {
+    val isReceived: Boolean get() = origin == ORIGIN_RECEIVED
+
+    companion object {
+        const val ORIGIN_RECORDED = "recorded"
+        const val ORIGIN_RECEIVED = "received"
+    }
+}
 
 /** Schema of notes/<id>/signals.json (TRD § DATA MODEL). */
 @Serializable

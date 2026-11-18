@@ -131,3 +131,14 @@ Pending — needs the developer:
 - R-O2 migration: NOT implemented. No creation code or flag identifies a "demo" note, and the note on the phone is most likely the developer's real recording; ONBOARDING.md says to ask before deleting in that case.
 
 Verified: build + all unit tests; WelcomeChoice and Tour rendered as Studio previews. The emulator was stopped by Claude Code for low memory and not restarted.
+
+## 2026-11-18 — Step 2: payload + audio-only import (SHARE_AND_IMPORT.md)
+
+Done:
+- `HeartnotePayload` (gzip JSON, exactly the § PAYLOAD fields; unit tests check the field list and that no raw signals appear), `PayloadTrack` remux pass adding the `application/x-heartnote` MP4 metadata track, `ShareExports` (own notes: fresh `Heartnote for <title>.m4a` with payload; received notes: the original file).
+- `ImportManager`: copy → payload track (else `BeatRecovery`, a stub that refuses until step 5) → `signals.json` (beats, smiles, dot columns only) + `meta.json` with `origin = "received"` → opens Playback.
+- Entry points: Library Import action (outer-right nav slot, `ACTION_OPEN_DOCUMENT`), share target (`ACTION_SEND` video/audio/octet-stream) and "Open with" (`ACTION_VIEW` content mp4/m4a). Incoming files wait in `ImportRequests` until the Library (after consent) imports them.
+- Library "Yours" / "Received" groups, "Received • date" subtitles, import progress/error banner. About moved into a merged "Privacy & about" sheet (with Replay tour and the new data-handling lines).
+- Playback/Hold play the received file; labels "Timed to their measured pulse" / "Recovered from the shared file"; Hold mini trace drawn from beat times for received notes.
+
+Needs the phone: the MediaMuxer metadata track round trip (write → WhatsApp Document → MediaExtractor read) is documented Android behaviour but untested here; WhatsApp-as-Document import test.

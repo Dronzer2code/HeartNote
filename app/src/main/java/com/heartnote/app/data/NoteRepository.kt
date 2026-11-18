@@ -23,6 +23,11 @@ class NoteRepository(filesDir: File) {
     fun signalsFile(id: String): File = File(noteDir(id), "signals.json")
     fun metaFile(id: String): File = File(noteDir(id), "meta.json")
     fun audioFile(id: String): File = File(noteDir(id), "heartnote.m4a")
+    fun shareDir(id: String): File = File(noteDir(id), "share").apply { mkdirs() }
+
+    /** What ExoPlayer plays: the exported mix, or the imported file of a received note. */
+    fun playbackFile(meta: NoteMeta): File =
+        meta.receivedFile?.let { File(noteDir(meta.id), it) } ?: audioFile(meta.id)
 
     fun writeSignals(id: String, signals: SignalsFile) {
         writeAtomically(signalsFile(id), json.encodeToString(SignalsFile.serializer(), signals))
@@ -39,11 +44,12 @@ class NoteRepository(filesDir: File) {
         json.decodeFromString(NoteMeta.serializer(), metaFile(id).readText())
     }.getOrNull()
 
-    /** Finished notes (meta + exported audio), newest first. */
+    /** Finished notes (meta + playable audio), newest first. */
     fun list(): List<NoteMeta> =
         (notesRoot.listFiles() ?: emptyArray())
-            .filter { it.isDirectory && File(it, "heartnote.m4a").exists() }
+            .filter { it.isDirectory }
             .mapNotNull { readMeta(it.name) }
+            .filter { playbackFile(it).exists() }
             .sortedByDescending { it.createdAt }
 
     fun rename(id: String, title: String): NoteMeta? {

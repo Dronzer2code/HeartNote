@@ -28,6 +28,22 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- F14: "Share → Heartnote" from WhatsApp, Files, Drive… (import starts in the Library). -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <!-- F14: "Open with Heartnote" for received .mp4 / .m4a files. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="video/mp4" />
+                <data android:mimeType="audio/mp4" />
+            </intent-filter>
         </activity>
 
         <provider

@@ -50,7 +50,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.heartnote.app.R
 import com.heartnote.app.data.NoteMeta
 import com.heartnote.app.data.SmileSegment
+import com.heartnote.app.share.BeatRecovery
 import com.heartnote.app.share.ShareHelper
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.heartnote.app.signal.BeatSource
 import com.heartnote.app.signal.TimedValue
 import com.heartnote.app.ui.beat.BeatBus
@@ -69,6 +72,14 @@ import com.heartnote.app.ui.theme.HnColors
 import com.heartnote.app.ui.theme.HnDims
 import com.heartnote.app.ui.theme.HnType
 
+/** R6 label; received notes say "their" pulse, recovered beats say so. */
+fun beatLabel(meta: NoteMeta): Int = when {
+    meta.beatSource == BeatRecovery.SOURCE -> R.string.beat_label_recovered
+    BeatSource.fromKey(meta.beatSource) == BeatSource.TRACE ->
+        if (meta.isReceived) R.string.beat_label_trace_their else R.string.beat_label_trace
+    else -> if (meta.isReceived) R.string.beat_label_rate_their else R.string.beat_label_rate
+}
+
 /** Beat-flash target: the dot column holding the latest played beat. */
 data class BeatFlash(val row: Int, val column: Int, val key: Int)
 
@@ -83,6 +94,7 @@ fun PlaybackScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val shareTitle = stringResource(R.string.share_chooser_title)
+    val scope = rememberCoroutineScope()
     var flash by remember { mutableStateOf<BeatFlash?>(null) }
     var flashCount by remember { mutableIntStateOf(0) }
 
@@ -98,7 +110,7 @@ fun PlaybackScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.pause() }
 
     val rows = remember(state.signals) {
-        state.signals?.let { s -> DotChartData.playbackRows(s.raw.bpTrace.map { TimedValue(it.tMs, it.v) }, s.durationMs) }
+        state.signals?.let { DotChartData.playbackRows(it) }
     }
 
     if (state.loadFailed) {
@@ -117,7 +129,11 @@ fun PlaybackScreen(
         vibrationAvailable = state.vibrationAvailable,
         bluetoothOutput = state.bluetoothOutput,
         onBack = onBack,
-        onShare = { ShareHelper.share(context, viewModel.audioFile(), shareTitle) },
+        onShare = {
+            scope.launch {
+                viewModel.shareable()?.let { ShareHelper.share(context, it.file, shareTitle, it.mimeType) }
+            }
+        },
         onTogglePlay = viewModel::togglePlay,
         onSeek = viewModel::seekTo,
         onHold = { viewModel.pause(); onHold(meta.id) },
@@ -146,9 +162,7 @@ internal fun PlaybackContent(
     var renaming by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val started = player.isPlaying || player.positionMs > 0
-    val sourceLabel = stringResource(
-        if (BeatSource.fromKey(meta.beatSource) == BeatSource.TRACE) R.string.beat_label_trace else R.string.beat_label_rate,
-    )
+    val sourceLabel = stringResource(beatLabel(meta))
 
     Box(Modifier.fillMaxSize().background(HnColors.LightBg)) {
         Column(

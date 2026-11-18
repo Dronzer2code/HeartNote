@@ -60,6 +60,11 @@ import com.heartnote.app.ui.theme.HnColors
 import com.heartnote.app.ui.theme.HnDims
 import com.heartnote.app.ui.theme.HnType
 import kotlinx.coroutines.launch
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
+import com.heartnote.app.share.ImportRequests
 
 /** DESIGN.md § LibraryScreen (reference: left screen). F10. */
 @Composable
@@ -68,13 +73,27 @@ fun LibraryScreen(
     onOpenNote: (String) -> Unit,
     onHold: (String) -> Unit,
     onPrivacy: () -> Unit,
-    onAbout: () -> Unit,
     viewModel: LibraryViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val shareTitle = stringResource(R.string.share_chooser_title)
+    val scope = rememberCoroutineScope()
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let(viewModel::import)
+    }
+
+    // Share target / Open with: picked up here, after consent (never auto-imported).
+    LaunchedEffect(Unit) {
+        ImportRequests.pending.collect { if (it != null) ImportRequests.take()?.let(viewModel::import) }
+    }
+    LaunchedEffect(state.openNoteId) {
+        state.openNoteId?.let { id ->
+            viewModel.onNoteOpened()
+            onOpenNote(id)
+        }
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -89,11 +108,19 @@ fun LibraryScreen(
         onRecord = onRecord,
         onOpenNote = onOpenNote,
         onHold = onHold,
-        onShare = { id -> ShareHelper.share(context, viewModel.audioFile(id), shareTitle) },
+        onShare = { meta ->
+            scope.launch {
+                viewModel.shareable(meta)?.let { ShareHelper.share(context, it.file, shareTitle, it.mimeType) }
+            }
+        },
         onPrivacy = onPrivacy,
-        onAbout = onAbout,
+        onImport = { picker.launch(IMPORT_TYPES) },
+        onDismissMessage = viewModel::dismissMessage,
     )
 }
+
+/** SHARE_AND_IMPORT.md entry point 1: picker types (no storage permission needed). */
+private val IMPORT_TYPES = arrayOf("video/mp4", "audio/mp4", "audio/*", "application/octet-stream")
 
 @Composable
 internal fun LibraryContent(
@@ -101,9 +128,10 @@ internal fun LibraryContent(
     onRecord: () -> Unit,
     onOpenNote: (String) -> Unit,
     onHold: (String) -> Unit,
-    onShare: (String) -> Unit,
+    onShare: (NoteMeta) -> Unit,
     onPrivacy: () -> Unit,
-    onAbout: () -> Unit,
+    onImport: () -> Unit,
+    onDismissMessage: () -> Unit,
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -140,18 +168,43 @@ internal fun LibraryContent(
                     onHistory = { scope.launch { listState.animateScrollToItem(OLDER_INDEX) } },
                 )
             }
-            if (state.older.isNotEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.library_older),
-                        style = HnType.bodySecondary,
-                        color = HnColors.InkGrey,
-                        modifier = Modifier.padding(top = 24.dp, bottom = 8.dp, start = 4.dp),
-                    )
+            listOf(R.string.library_yours to state.yours, R.string.library_received to state.received).forEach { (label, group) ->
+                if (group.isNotEmpty()) {
+                    item(key = "header-$label") {
+                        Text(
+                            stringResource(label),
+                            style = HnType.bodySecondary,
+                            color = HnColors.InkGrey,
+                            modifier = Modifier.padding(top = 24.dp, bottom = 8.dp, start = 4.dp),
+                        )
+                    }
+                    items(group, key = { it.id }) { note ->
+                        NoteRow(note, onClick = { onOpenNote(note.id) })
+                    }
                 }
-                items(state.older, key = { it.id }) { note ->
-                    NoteRow(note, onClick = { onOpenNote(note.id) })
+            }
+        }
+
+        if (state.importing || state.message != null) {
+            Row(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = insets.calculateTopPadding() + 8.dp, start = 20.dp, end = 20.dp)
+                    .clip(HnDims.rowShape)
+                    .background(HnColors.InkBlack)
+                    .clickable(enabled = !state.importing, onClick = onDismissMessage)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (state.importing) {
+                    CircularProgressIndicator(Modifier.size(18.dp), color = HnColors.CardWhite, strokeWidth = 2.dp)
                 }
+                Text(
+                    stringResource(state.message ?: R.string.import_progress),
+                    style = HnType.bodySecondary,
+                    color = HnColors.CardWhite,
+                    modifier = Modifier.padding(start = if (state.importing) 12.dp else 0.dp),
+                )
             }
         }
 
@@ -167,10 +220,10 @@ internal fun LibraryContent(
             innerRight = NavAction(
                 HeartnoteIcons.Share,
                 stringResource(R.string.cd_share_latest),
-                { latest?.let { onShare(it.id) } },
+                { latest?.let(onShare) },
                 enabled = latest != null,
             ),
-            outerRight = NavAction(HeartnoteIcons.Info, stringResource(R.string.cd_about), onAbout),
+            outerRight = NavAction(HeartnoteIcons.Import, stringResource(R.string.cd_import), onImport),
             label = stringResource(R.string.nav_record),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -232,7 +285,7 @@ private fun LatestCard(note: NoteMeta?, columns: FloatArray?, onOpen: () -> Unit
                 )
                 if (note != null) {
                     Text(
-                        formatNoteDate(context, note.createdAt),
+                        noteDateLine(note),
                         style = HnType.cardSubtitle,
                         modifier = Modifier.padding(top = 2.dp),
                     )
@@ -289,13 +342,20 @@ private fun NoteRow(note: NoteMeta, onClick: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Text(note.title, style = HnType.bodyPrimary, color = HnColors.InkBlack, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                stringResource(R.string.library_row_detail, formatNoteDate(context, note.createdAt), formatDuration(note.durationMs)),
+                stringResource(R.string.library_row_detail, noteDateLine(note), formatDuration(note.durationMs)),
                 style = HnType.caption,
                 color = HnColors.InkGrey,
             )
         }
         Icon(HeartnoteIcons.ChevronRight, contentDescription = null, tint = HnColors.InkGrey, modifier = Modifier.size(18.dp))
     }
+}
+
+/** "Today • Nov 17, 2026", or "Received • Today • Nov 17, 2026" for imported notes. */
+@Composable
+private fun noteDateLine(note: NoteMeta): String {
+    val date = formatNoteDate(LocalContext.current, note.createdAt)
+    return if (note.isReceived) stringResource(R.string.library_received_line, date) else date
 }
 
 private val NAV_SPACE = 132.dp
@@ -312,12 +372,12 @@ private val previewNotes = listOf(
 private fun LibraryPreview() {
     LibraryContent(
         LibraryUiState(loading = false, notes = previewNotes, latestColumns = previewDotValues(36)),
-        {}, {}, {}, {}, {}, {},
+        {}, {}, {}, {}, {}, {}, {},
     )
 }
 
 @Preview(name = "Library — empty", widthDp = 393, heightDp = 852)
 @Composable
 private fun LibraryEmptyPreview() {
-    LibraryContent(LibraryUiState(loading = false), {}, {}, {}, {}, {}, {})
+    LibraryContent(LibraryUiState(loading = false), {}, {}, {}, {}, {}, {}, {})
 }

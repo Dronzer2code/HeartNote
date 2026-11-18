@@ -24,7 +24,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.heartnote.app.ui.hold.HoldScreen
 import com.heartnote.app.ui.library.LibraryScreen
-import com.heartnote.app.ui.onboarding.AboutSheet
 import com.heartnote.app.ui.onboarding.ConsentScreen
 import com.heartnote.app.ui.onboarding.ConsentStore
 import com.heartnote.app.ui.onboarding.PrivacySheet
@@ -81,7 +80,6 @@ fun HeartnoteNavGraph() {
         nav.navigate(Routes.LIBRARY) { popUpTo(nav.graph.id) { inclusive = true } }
     }
     var showPrivacy by rememberSaveable { mutableStateOf(false) }
-    var showAbout by rememberSaveable { mutableStateOf(false) }
     val noteArg = listOf(navArgument(PlaybackViewModel.NOTE_ID_ARG) { type = NavType.StringType })
 
     NavHost(
@@ -114,7 +112,6 @@ fun HeartnoteNavGraph() {
                 onOpenNote = { id -> nav.navigate(Routes.playback(id)) },
                 onHold = { id -> nav.navigate(Routes.hold(id)) },
                 onPrivacy = { showPrivacy = true },
-                onAbout = { showAbout = true },
             )
         }
         composable(Routes.RECORD) {
@@ -135,12 +132,11 @@ fun HeartnoteNavGraph() {
         }
     }
 
-    if (showPrivacy) PrivacySheet(onDismiss = { showPrivacy = false })
-    if (showAbout) {
-        AboutSheet(
-            onDismiss = { showAbout = false },
+    if (showPrivacy) {
+        PrivacySheet(
+            onDismiss = { showPrivacy = false },
             onReplayTour = {
-                showAbout = false
+                showPrivacy = false
                 nav.navigate(Routes.tour(replay = true))
             },
         )

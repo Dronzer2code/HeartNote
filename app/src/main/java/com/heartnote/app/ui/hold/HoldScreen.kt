@@ -58,6 +58,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.heartnote.app.R
 import com.heartnote.app.share.ShareHelper
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.heartnote.app.ui.beat.BeatBus
 import com.heartnote.app.ui.beat.BeatKind
 import com.heartnote.app.ui.components.CircleIconButton
@@ -80,6 +82,7 @@ fun HoldScreen(onBack: () -> Unit, viewModel: PlaybackViewModel = viewModel()) {
     val state = viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val shareTitle = stringResource(R.string.share_chooser_title)
+    val scope = rememberCoroutineScope()
     val meta by remember { derivedStateOf { state.value.meta } }
     val isPlaying by remember { derivedStateOf { state.value.player.isPlaying } }
 
@@ -168,7 +171,11 @@ fun HoldScreen(onBack: () -> Unit, viewModel: PlaybackViewModel = viewModel()) {
             onBack = onBack,
             onToggle = viewModel::togglePlay,
             onReplay = { viewModel.seekTo(0); viewModel.play() },
-            onShare = { ShareHelper.share(context, viewModel.audioFile(), shareTitle) },
+            onShare = {
+                scope.launch {
+                    viewModel.shareable()?.let { ShareHelper.share(context, it.file, shareTitle, it.mimeType) }
+                }
+            },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 36.dp),
@@ -181,7 +188,11 @@ private fun HoldCard(state: State<PlaybackUiState>, modifier: Modifier) {
     val signals by remember { derivedStateOf { state.value.signals } }
     val trace = remember(signals) {
         val raw = signals?.raw?.bpTrace.orEmpty()
-        LongArray(raw.size) { raw[it].tMs } to FloatArray(raw.size) { raw[it].v }
+        if (raw.isNotEmpty()) {
+            LongArray(raw.size) { raw[it].tMs } to FloatArray(raw.size) { raw[it].v }
+        } else {
+            pulseShapeFromBeats(signals?.beatsMs.orEmpty(), signals?.durationMs ?: 0L)
+        }
     }
     val beats = remember(signals) { signals?.beatsMs?.toLongArray() ?: LongArray(0) }
     val played by remember(beats) {
@@ -307,6 +318,21 @@ private fun ImmersiveKeepScreenOn() {
             view.keepScreenOn = false
         }
     }
+}
+
+/** 30 Hz pulse-like curve with a peak on every beat (received notes carry no trace). */
+private fun pulseShapeFromBeats(beats: List<Long>, durationMs: Long): Pair<LongArray, FloatArray> {
+    if (beats.isEmpty() || durationMs <= 0) return LongArray(0) to FloatArray(0)
+    val n = (durationMs / 33).toInt() + 1
+    val t = LongArray(n) { it * 33L }
+    val sorted = beats.sorted()
+    var j = 0
+    val v = FloatArray(n) { i ->
+        while (j < sorted.size - 1 && sorted[j + 1] <= t[i]) j++
+        val dt = (t[i] - sorted[j]).toFloat() / 1000f
+        if (dt < 0f) 0f else kotlin.math.exp(-dt * dt / 0.004f) + 0.3f * kotlin.math.exp(-(dt - 0.33f) * (dt - 0.33f) / 0.006f)
+    }
+    return t to v
 }
 
 private const val GLOW_BOOST = 0.15f

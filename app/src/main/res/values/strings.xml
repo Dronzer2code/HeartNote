@@ -77,6 +77,16 @@
     <string name="nav_record">Record</string>
     <string name="share_chooser_title">Send your Heartnote</string>
 
+    <!-- Import (F14) -->
+    <string name="cd_import">Import a Heartnote</string>
+    <string name="import_default_title">Received Heartnote</string>
+    <string name="import_progress">Opening the Heartnote…</string>
+    <string name="import_not_heartnote">This file doesn\'t contain a heartbeat Heartnote can read.</string>
+    <string name="import_failed">Couldn\'t open this file.</string>
+    <string name="library_yours">Yours</string>
+    <string name="library_received">Received</string>
+    <string name="library_received_line">Received • %1$s</string>
+
     <!-- PlaybackScreen (reference: right screen) -->
     <string name="playback_title">Heartnote</string>
     <string name="playback_heading_grey">Heartnote for</string>
@@ -134,7 +144,7 @@
     <string name="replay_tour">Replay tour</string>
 
     <!-- Privacy sheet (content source: TRD § CONSENT AND DATA HANDLING) -->
-    <string name="privacy_title">Privacy</string>
+    <string name="privacy_title">Privacy &amp; about</string>
     <string name="privacy_not_stored_title">Never stored</string>
     <string name="privacy_not_stored">Camera frames and video. The camera is only used while you record, to read your pulse, breathing and expressions.</string>
     <string name="privacy_stored_title">Stored on this phone only</string>
@@ -143,8 +153,12 @@
     <string name="privacy_sharing">Only when you tap Share, and only the audio file. Signal data is never shared.</string>
     <string name="privacy_delete_title">Deleting</string>
     <string name="privacy_delete">Delete removes every file of a note. Uninstalling Heartnote removes all notes. Notes are not included in phone backups.</string>
+    <string name="privacy_shared_title">What a shared file contains</string>
+    <string name="privacy_shared">Your voice, the heartbeat sound, the beat timing and display values, so Heartnote can replay it. No raw camera-derived signals: no pulse waveform, pulse-rate samples, breathing or expressions.</string>
+    <string name="privacy_received_title">Received notes</string>
+    <string name="privacy_received">Importing is always your choice. Received notes are stored only on this phone and can be deleted at any time.</string>
     <string name="privacy_servers_title">Servers</string>
-    <string name="privacy_servers">Heartnote has no servers and sends no data anywhere. The Presage SmartSpectra SDK that reads your pulse uses the internet to check the app\'s licence key; see Presage\'s privacy policy for what it sends.</string>
+    <string name="privacy_servers">Heartnote has no servers and no accounts, and sends no data anywhere. The Presage SmartSpectra SDK that reads your pulse uses the internet to check the app\'s licence key; see Presage\'s privacy policy for what it sends.</string>
 
     <!-- About sheet -->
     <string name="about_title">About Heartnote</string>
@@ -165,6 +179,9 @@
     <!-- R6: the heartbeat is synthesized at the measured beat times. -->
     <string name="beat_label_trace">Timed to your measured pulse</string>
     <string name="beat_label_rate">Paced by your live pulse</string>
+    <string name="beat_label_trace_their">Timed to their measured pulse</string>
+    <string name="beat_label_rate_their">Paced by their live pulse</string>
+    <string name="beat_label_recovered">Recovered from the shared file</string>
     <string name="playback_play">Play</string>
     <string name="playback_pause">Pause</string>
     <string name="playback_load_failed">This note could not be opened.</string>

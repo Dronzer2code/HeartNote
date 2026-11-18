@@ -145,4 +145,12 @@ object HeartnoteIcons {
     val ChevronRight by lazy { outline("chevron-right", "m9 18 6-6-6-6") }
     val Close by lazy { outline("close", "M18 6 6 18", "m6 6 12 12") }
     val Check by lazy { outline("check", "M20 6 9 17l-5-5") }
+    val Import by lazy {
+        outline(
+            "import",
+            "M12 3v12",
+            "m8 11 4 4 4-4",
+            "M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4",
+        )
+    }
 }

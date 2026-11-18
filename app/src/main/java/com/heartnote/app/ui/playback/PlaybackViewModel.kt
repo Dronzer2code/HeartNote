@@ -12,6 +12,7 @@ import com.heartnote.app.data.NoteMeta
 import com.heartnote.app.data.NoteRepository
 import com.heartnote.app.data.SignalsFile
 import com.heartnote.app.haptics.HeartbeatHaptics
+import com.heartnote.app.share.ShareExports
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,7 @@ open class PlaybackViewModel(
     val noteId: String = checkNotNull(savedStateHandle[NOTE_ID_ARG])
 
     private val repository = NoteRepository(application.filesDir)
+    private val exports = ShareExports(repository)
     private val player = NotePlayer(application, viewModelScope)
     private val audioManager = application.getSystemService(AudioManager::class.java)
 
@@ -62,12 +64,12 @@ open class PlaybackViewModel(
             }
             val meta = loaded?.first
             val signals = loaded?.second
-            if (meta == null || signals == null || !repository.audioFile(noteId).exists()) {
+            if (meta == null || signals == null || !repository.playbackFile(meta).exists()) {
                 _uiState.update { it.copy(loadFailed = true) }
                 return@launch
             }
             _uiState.update { it.copy(meta = meta, signals = signals) }
-            player.load(repository.audioFile(noteId), signals.beatsMs, signals.durationMs)
+            player.load(repository.playbackFile(meta), signals.beatsMs, signals.durationMs)
         }
     }
 
@@ -91,7 +93,11 @@ open class PlaybackViewModel(
         }
     }
 
-    fun audioFile() = repository.audioFile(noteId)
+    /** The file to share: own notes get the payload track; received notes the original file. */
+    suspend fun shareable(): ShareExports.Shareable? {
+        val meta = _uiState.value.meta ?: return null
+        return runCatching { exports.audio(meta) }.getOrNull()
+    }
 
     private fun refreshOutput() {
         val bluetooth = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { it.type in bluetoothTypes }
