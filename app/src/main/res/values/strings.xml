@@ -184,6 +184,14 @@
     <string name="share_audio_desc">Voice and heartbeat sound.</string>
     <string name="share_tip">On WhatsApp, send it as a Document so it keeps the full heartbeat.</string>
     <string name="share_disclosure">Shared files include your heartbeat timing so Heartnote can replay it.</string>
+    <string name="share_video_action">Share video</string>
+    <string name="share_audio_action">Share audio</string>
+    <string name="share_action">Share</string>
+    <string name="share_received">Original file</string>
+    <string name="share_received_desc">Received notes are shared as the file you got.</string>
+    <string name="save_video_action">Save video to phone</string>
+    <string name="save_audio_action">Save audio to phone</string>
+    <string name="save_to_phone">Save to phone</string>
     <string name="share_making_video">Making the video… %1$d%%</string>
     <string name="share_video_failed">Couldn\'t make the video</string>
     <string name="video_footer">Open in Heartnote to feel this heartbeat</string>

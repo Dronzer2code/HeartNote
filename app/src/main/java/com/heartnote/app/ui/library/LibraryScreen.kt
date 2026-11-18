@@ -44,7 +44,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.heartnote.app.R
 import com.heartnote.app.data.NoteMeta
-import com.heartnote.app.share.ShareHelper
+import com.heartnote.app.ui.share.NoteShareSheet
+import com.heartnote.app.ui.share.ShareViewModel
 import com.heartnote.app.ui.components.ArcNavBar
 import com.heartnote.app.ui.components.CircleIconButton
 import com.heartnote.app.ui.components.DotBarChart
@@ -79,7 +80,8 @@ fun LibraryScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val shareTitle = stringResource(R.string.share_chooser_title)
-    val scope = rememberCoroutineScope()
+    val share: ShareViewModel = viewModel()
+    NoteShareSheet(share)
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(viewModel::import)
     }
@@ -108,11 +110,7 @@ fun LibraryScreen(
         onRecord = onRecord,
         onOpenNote = onOpenNote,
         onHold = onHold,
-        onShare = { meta ->
-            scope.launch {
-                viewModel.shareable(meta)?.let { ShareHelper.share(context, it.file, shareTitle, it.mimeType) }
-            }
-        },
+        onShare = share::open,
         onPrivacy = onPrivacy,
         onImport = { picker.launch(IMPORT_TYPES) },
         onDismissMessage = viewModel::dismissMessage,

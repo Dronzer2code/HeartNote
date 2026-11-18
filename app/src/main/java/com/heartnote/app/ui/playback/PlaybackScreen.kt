@@ -51,7 +51,8 @@ import com.heartnote.app.R
 import com.heartnote.app.data.NoteMeta
 import com.heartnote.app.data.SmileSegment
 import com.heartnote.app.share.BeatRecovery
-import com.heartnote.app.share.ShareHelper
+import com.heartnote.app.ui.share.NoteShareSheet
+import com.heartnote.app.ui.share.ShareViewModel
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.heartnote.app.signal.BeatSource
@@ -107,23 +108,8 @@ fun PlaybackScreen(
         }
     }
     LaunchedEffect(state.deleted) { if (state.deleted) onDeleted() }
-    var showShare by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(state.shareReady) {
-        state.shareReady?.let {
-            showShare = false
-            viewModel.onShared()
-            ShareHelper.share(context, it.file, shareTitle, it.mimeType)
-        }
-    }
-    if (showShare) {
-        ShareSheet(
-            video = state.videoExport,
-            onVideo = viewModel::shareVideo,
-            onAudio = viewModel::shareAudio,
-            onCancelVideo = viewModel::cancelVideo,
-            onDismiss = { showShare = false },
-        )
-    }
+    val share: ShareViewModel = viewModel()
+    NoteShareSheet(share)
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.pause() }
 
     val rows = remember(state.signals) {
@@ -146,14 +132,7 @@ fun PlaybackScreen(
         vibrationAvailable = state.vibrationAvailable,
         bluetoothOutput = state.bluetoothOutput,
         onBack = onBack,
-        onShare = {
-            // Received notes are re-shared only as the original file: no sheet.
-            if (state.meta?.isReceived == true) {
-                scope.launch { viewModel.shareable()?.let { ShareHelper.share(context, it.file, shareTitle, it.mimeType) } }
-            } else {
-                showShare = true
-            }
-        },
+        onShare = { share.open(meta) },
         onTogglePlay = viewModel::togglePlay,
         onSeek = viewModel::seekTo,
         onHold = { viewModel.pause(); onHold(meta.id) },

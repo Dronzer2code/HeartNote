@@ -57,7 +57,8 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.heartnote.app.R
-import com.heartnote.app.share.ShareHelper
+import com.heartnote.app.ui.share.NoteShareSheet
+import com.heartnote.app.ui.share.ShareViewModel
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.heartnote.app.ui.beat.BeatBus
@@ -86,6 +87,8 @@ fun HoldScreen(onBack: () -> Unit, viewModel: PlaybackViewModel = viewModel()) {
     val meta by remember { derivedStateOf { state.value.meta } }
     val isPlaying by remember { derivedStateOf { state.value.player.isPlaying } }
 
+    val share: ShareViewModel = viewModel()
+    NoteShareSheet(share)
     ImmersiveKeepScreenOn()
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.pause() }
     LaunchedEffect(meta != null) { if (meta != null) viewModel.play() }
@@ -171,11 +174,7 @@ fun HoldScreen(onBack: () -> Unit, viewModel: PlaybackViewModel = viewModel()) {
             onBack = onBack,
             onToggle = viewModel::togglePlay,
             onReplay = { viewModel.seekTo(0); viewModel.play() },
-            onShare = {
-                scope.launch {
-                    viewModel.shareable()?.let { ShareHelper.share(context, it.file, shareTitle, it.mimeType) }
-                }
-            },
+            onShare = { meta?.let(share::open) },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 36.dp),

@@ -9,7 +9,6 @@ import com.heartnote.app.R
 import com.heartnote.app.data.NoteMeta
 import com.heartnote.app.data.NoteRepository
 import com.heartnote.app.share.ImportManager
-import com.heartnote.app.share.ShareExports
 import com.heartnote.app.ui.playback.DotChartData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +40,6 @@ data class LibraryUiState(
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = NoteRepository(application.filesDir)
     private val importer = ImportManager(application, repository)
-    private val exports = ShareExports(repository)
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState
 
@@ -78,8 +76,4 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
     fun onNoteOpened() = _uiState.update { it.copy(openNoteId = null) }
     fun dismissMessage() = _uiState.update { it.copy(message = null) }
-
-    /** A note as a shareable file (own notes get the payload track). */
-    suspend fun shareable(meta: NoteMeta): ShareExports.Shareable? =
-        runCatching { exports.audio(meta) }.getOrNull()
 }

@@ -195,3 +195,8 @@ Done: PRD (F1 flow, F9 revised, F12→F13, F13, F14, F15, C7), TRD (project stru
 - [needs phone] 60 s video ≤ 16 MB (expected ≈ 14.5 MB at 1.8 Mbps + 128 kbps), finishes, cancellable.
 - [PASS] Payload JSON contains only the § PAYLOAD fields (unit test).
 - [PASS, code] Share sheet shows the disclosure line (string `share_disclosure`, always rendered).
+
+## 2026-11-18 — Device-test fixes
+
+### Fix 1: one share entry point
+- Every share button (Playback, Hold, Library "share latest") opens the same sheet through `ui/share/ShareViewModel` + `NoteShareSheet`. Hold no longer shares the raw .m4a. `ShareHelper` is the only place that creates a share Intent (checked by search). Received notes get one "Original file" section in the same sheet.
