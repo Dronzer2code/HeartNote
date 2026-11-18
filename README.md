@@ -56,8 +56,9 @@ Or open the project in Android Studio and press Run with your phone connected (U
 | `RECORD_AUDIO` | Records your voice note. | Same time as the camera. |
 | `INTERNET` | The SDK checks its API key with Presage. Heartnote itself sends nothing. | Granted at install. |
 | `VIBRATE` | Plays the heartbeat as vibration during playback. | Granted at install. |
+| `WRITE_EXTERNAL_STORAGE` | Android 9 only: "Save to phone" into Downloads/Heartnote. Newer Android needs no permission for this. | Asked only when you tap Save on Android 9. |
 
-No storage permission: notes live in the app's private storage and are excluded from cloud backup and device transfer.
+Notes live in the app's private storage and are excluded from cloud backup and device transfer. "Save to phone" puts a copy you choose in Downloads/Heartnote (attach it on WhatsApp as a Document to keep the heartbeat).
 
 ## Sharing
 

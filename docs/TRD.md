@@ -92,7 +92,7 @@ heartnote/
 - `CAMERA`, `RECORD_AUDIO`: runtime permissions. Request only after F1 consent is accepted.
 - `VIBRATE`, `INTERNET`: normal permissions, granted at install.
 - Register a `FileProvider` (`${applicationId}.fileprovider`) for F9 sharing.
-- No storage permissions. All files live in `context.filesDir`.
+- No storage permissions on API 29+. All note files live in `context.filesDir`. Exception (2026-11-18): "Save to phone" uses MediaStore.Downloads (no permission) on API 29+ and `WRITE_EXTERNAL_STORAGE` with `maxSdkVersion="28"` on API 28, requested only when saving. `<queries>` lists `com.whatsapp` for the "Open WhatsApp" button.
 - `android:allowBackup="false"` and `data_extraction_rules.xml` exclude everything from cloud backup and device transfer (FIXED 2026-11-17: the template had backup on, which would have copied notes to the user's Google Drive, contradicting R4 and the consent copy).
 - No foreground service. Recording and playback happen only while the app is visible.
 
@@ -209,14 +209,21 @@ Per beat at time `t`, with interval `RR` to the next beat:
 - Low-pass 150 Hz (one-pole). Output 48 kHz mono float.
 - UPDATED 2026-11-18 (SHARE_AND_IMPORT.md § AMPLIFIED HEARTBEAT): every new mix uses `Preset.SPEAKER` — lub 55 Hz + 110 Hz (0.5) + 165 Hz (0.25), τ 40 ms, plus an 8 ms Hann-windowed 800 Hz transient at 0.15; dub 70/140/210 Hz at 0.6 of the lub. No 150 Hz low-pass in this preset (it would remove the transient). `Preset.CLASSIC` is the original pure-sine sound above. Notes made earlier keep their mix. MUST be tuned by ear on the phone speaker.
 
-`Mixer.kt`: `mixed = voice + heartbeat × 0.6` (was 0.35; tune by ear, the voice must stay clear), then a peak limiter (instant attack, 50 ms release, ceiling 0.95), then soft-clip (linear to 0.9, tanh above), convert to PCM16. The voice is first normalised so its 99.9th-percentile level is 0.7 (gain 1–8×, i.e. at most +18 dB) because phone mic levels vary; a silent voice is left untouched.
+`Mixer.kt` (REPLACED 2026-11-18, the heartbeat is the dominant sound): voice normalised to **−24 dBFS RMS** (gated over 50 ms frames above −50 dBFS so pauses don't count; at most +30 dB; a silent voice is untouched), then **voice gain** (default −9 dB, tuning range −18…0); heartbeat (SPEAKER preset, peak 1.0) scaled to a **−3 dBFS peak** × **heartbeat gain** (default 0 dB, range −12…+6); sum through a peak limiter (instant attack, 50 ms release) and a soft clip at **−1 dBFS**; PCM16. `MixSettings.current` holds the gains; only debug builds can override it (Mix tuning screen). The same mix is used for in-app playback, the `.m4a` and the `.mp4`. Final values: PENDING — chosen by ear on the phone speaker.
 
 Silent microphone (found 2026-11-17): the developer's first 60 s device recording produced an all-zero `voice.wav` (2,892,480 samples, every one 0). Android delivers digital silence, not an error, when the mic privacy toggle is off or another app holds the mic. `AudioCapture.peakAbs` tracks the loudest sample; RecordViewModel discards the recording after 2 s of exact silence and shows `record_error_mic_silent`. Root cause on the test device: UNKNOWN until the phone is reconnected.
 
 ## HAPTICS (`haptics/HeartbeatHaptics.kt`)
 
 - Obtain `Vibrator` via `VibratorManager.defaultVibrator` (API 31+) or `getSystemService(Vibrator::class.java)`.
-- IMPLEMENTED (2026-11-17): one effect per `BeatBus` event — LUB = primitive at 1.0, DUB = primitive at 0.5 — instead of one composed lub+dub effect, so the dub vibration fires on the same 10 ms poll that crosses the dub's time in the audio. A single app-wide subscriber in `HeartnoteApp` plays them, and only for events with a `noteTimeMs` (playback); live recording beats carry `null` and never vibrate.
+- REVISED 2026-11-18 (device test: too weak). `HapticStrength` setting Soft / Medium / **Strong (default)**, in the Privacy, settings & about sheet with a test button:
+  - Strong, with amplitude control: ONE waveform per beat on the LUB event, timings `[0, 70, dubGap − 70, 45]` ms, amplitudes `[0, 255, 0, 200]`, no repeat; `dubGap` = `clamp(0.3 × RR, 200, 350)` carried on the LUB `BeatEvent.dubDelayMs`; the DUB event is skipped. Without amplitude control: `createOneShot(70, DEFAULT_AMPLITUDE)` on LUB and a 45 ms one-shot on DUB.
+  - Medium: the same shape at 180 / 140.
+  - Soft: the 2026-11-17 behaviour — one THUD/CLICK primitive per event (LUB 1.0, DUB 0.5).
+  - A single app-wide subscriber in `HeartnoteApp` plays them, and only for events with a `noteTimeMs` (playback); live recording beats carry `null` and never vibrate.
+  - Vibration usage (API 33+): `USAGE_MEDIA` (default) or `USAGE_TOUCH`, switchable in the debug Mix tuning screen. **Result: PENDING** — compare on the phone (also on Silent) and record which feels stronger and isn't muted.
+  - Hint "Turn on vibration to feel the heartbeat." + "Open settings" (`Settings.ACTION_SOUND_SETTINGS`) when there is no vibrator, the ringer is on Silent, or (TOUCH) touch feedback is off. The media-vibration intensity cannot be read by apps (hidden setting).
+  - Debug trace: tag `HeartnoteHaptics` logs the import result, the note's beats on load, every fired beat and every vibrator call (Fix 3). Cause of "no vibration on imported notes": PENDING — run `ImportedNoteBeatsTest` and the logs on the phone.
 - API 31+ and `areAllPrimitivesSupported(PRIMITIVE_THUD)`: `VibrationEffect.startComposition().addPrimitive(PRIMITIVE_THUD, 1.0f).addPrimitive(PRIMITIVE_THUD, 0.5f, dubDelayMs).compose()`.
 - API 30 or THUD unsupported but `PRIMITIVE_CLICK` supported: same composition using `PRIMITIVE_CLICK`.
 - Otherwise: `VibrationEffect.createWaveform(longArrayOf(0, 40, dubDelayMs − 40, 25), intArrayOf(0, 255, 0, 140), -1)`; if `!hasAmplitudeControl()` use `createOneShot(40, DEFAULT_AMPLITUDE)`.

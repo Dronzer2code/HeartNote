@@ -64,7 +64,7 @@ Embedded in every exported `.mp4` and `.m4a`.
 Add a `SPEAKER` preset and use it for every new mix (in-app playback and shared files use the same mixed audio):
 - Lub: 55 Hz fundamental + 110 Hz (gain 0.5) + 165 Hz (gain 0.25) harmonics, decay τ 40 ms, plus an 8 ms soft transient band-limited around 800 Hz at gain 0.15 so the thump is audible on phone speakers.
 - Dub: same structure at 70 / 140 / 210 Hz, overall gain 0.6 of the lub.
-- Mix gain: heartbeat × 0.6 (was 0.35) with a soft limiter. The voice MUST stay clearly intelligible; tune the gain by ear on the phone speaker.
+- ~~Mix gain: heartbeat × 0.6 (was 0.35) with a soft limiter.~~ REPLACED 2026-11-18 (device test: heartbeat must dominate): voice normalised to −24 dBFS gated RMS, then voice gain (default −9 dB); heartbeat peaks at −3 dBFS × heartbeat gain (default 0 dB); peak limiter + soft clip at −1 dBFS. The voice MUST stay clearly intelligible; final values are picked by ear on the phone speaker with the debug Mix tuning screen. One mix for in-app playback, `.m4a` and `.mp4`.
 - Keep `voice.wav` after export from now on (reverses the TRD decision to delete it), so notes can be re-mixed and re-exported.
 - Notes made before this change keep their existing mix.
 
@@ -115,8 +115,13 @@ Bottom sheet opened from the PlaybackScreen share/download button. Styled per DE
 
 | Option | Text | Action |
 |---|---|---|
-| Video (default, first) | `Video` / `Plays anywhere. Opens in Heartnote with the heartbeat you can feel.` | Export `.mp4` → `ACTION_SEND`, type `video/mp4` |
-| Audio only | `Audio only` / `Voice and heartbeat sound.` | Export `.m4a` → `ACTION_SEND`, type `audio/mp4` |
+| Video (default, first) | `Video` / `Plays anywhere. Open it in Heartnote to feel the heartbeat.` | `Share video`: export `.mp4` → `ACTION_SEND` `video/mp4`. `Save video to phone`: same file → Downloads/Heartnote |
+| Audio only | `Audio only` / `Voice and heartbeat sound.` | `Share audio`: export `.m4a` → `ACTION_SEND` `audio/mp4`. `Save audio to phone`: same file → Downloads/Heartnote |
+| Received note | `Original file` | `Share` / `Save to phone` of the received file (no re-mix) |
+
+- ONE entry point (2026-11-18): Playback, Hold and Library "share latest" all open this sheet (`ui/share/ShareViewModel` + `NoteShareSheet`); `ShareHelper` is the only place that creates a share Intent.
+- Save to phone: the exported file WITH the payload track goes to `Downloads/Heartnote/` as `Heartnote_<title>_<yyyyMMdd_HHmm>.<ext>` (sanitised) — `MediaStore.Downloads` on API 29+; on API 28 `WRITE_EXTERNAL_STORAGE` (`maxSdkVersion="28"`), requested only at that moment. Then a sheet: `Saved to Downloads/Heartnote` + `To keep the heartbeat on WhatsApp: open the chat → Attach → Document → Browse → Downloads/Heartnote → pick the file.` + `Open WhatsApp` only if `com.whatsapp` is installed (`<queries>` entry).
+- A saved copy is outside Heartnote's storage: deleting the note does not delete it (stated in the privacy sheet).
 
 - Tip line under the options (12 sp `InkGrey`): `On WhatsApp, send it as a Document so it keeps the full heartbeat.`
 - Disclosure line (MUST): `Shared files include your heartbeat timing so Heartnote can replay it.`

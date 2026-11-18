@@ -223,3 +223,13 @@ Done: PRD (F1 flow, F9 revised, F12→F13, F13, F14, F15, C7), TRD (project stru
 - Mixer: voice normalised to −24 dBFS gated RMS (50 ms frames above −50 dBFS; max +30 dB; silence untouched) then voice gain (default −9 dB); heartbeat SPEAKER preset peaking at −3 dBFS × heartbeat gain (default 0 dB); peak limiter + soft clip at −1 dBFS. Same mix for in-app playback, .m4a and .mp4 (both exports use heartnote.m4a).
 - Debug-only "Mix tuning" (Privacy, settings & about → Mix tuning): voice −18…0 dB and heartbeat −12…+6 dB sliders, live re-mix of the latest note's voice.wav, "Use these values" (debug override) and "Apply to latest note" (re-render + clear share cache), plus the MEDIA/TOUCH vibration switch. Release builds always use the defaults.
 - Tests: voice lands at −33 dBFS RMS (−24 − 9) for quiet/medium/loud input, heartbeat peaks at −3 dBFS, sum never above −1 dBFS. Beat recovery re-checked with the new mix: still 100% within ±60 ms, also at the voice-heavy end of the range (voice 0 dB, heartbeat −12 dB, deep voice); no template change needed.
+
+### Docs
+- SHARE_AND_IMPORT.md (one share entry point, Save to phone + instructions, honest subtitle, new mix), TRD.md (permissions, Mixer, HAPTICS strength/usage/hint/logging), README (permissions, Save to phone) updated.
+
+### Must be tested by hand on the phone
+1. WhatsApp Document: Share sheet → "Save video to phone" (and audio) → follow the shown steps in WhatsApp (Attach → Document → Browse → Downloads/Heartnote) → on the receiving side "Open with Heartnote" → it imports and vibrates. "Open WhatsApp" appears only with WhatsApp installed.
+2. Imported vibration: `./gradlew :app:connectedDebugAndroidTest --tests '*ImportedNoteBeatsTest*'`, then import a real shared file with `adb logcat -s HeartnoteHaptics` running and send me the log (payloadTrack / beats / fire / vibrate lines).
+3. Strength levels: Privacy, settings & about → Soft / Medium / Strong + "Feel it"; then play a note at each level.
+4. Vibration usage: Mix tuning (debug) → MEDIA vs TOUCH, normal and Silent mode → tell me which; I record it in TRD.
+5. Mix tuning: record a note with real speech, open Mix tuning, pick voice/heartbeat gains by ear on the speaker → tell me the values (defaults now −9 dB / 0 dB).
