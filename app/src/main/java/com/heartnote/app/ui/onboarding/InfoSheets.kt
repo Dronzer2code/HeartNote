@@ -19,6 +19,71 @@ import com.heartnote.app.R
 import com.heartnote.app.ui.theme.HnColors
 import com.heartnote.app.ui.theme.HnDims
 import com.heartnote.app.ui.theme.HnType
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import com.heartnote.app.haptics.HapticStrength
+import com.heartnote.app.haptics.HapticsSettings
+import com.heartnote.app.haptics.HeartbeatHaptics
+import com.heartnote.app.ui.beat.BeatKind
+
+/** Fix 4: Soft / Medium / Strong (default Strong), a test beat, and the system settings. */
+@Composable
+private fun VibrationSettings() {
+    val context = LocalContext.current
+    val haptics = remember { HeartbeatHaptics(context) }
+    val strength by HapticsSettings.strength.collectAsState()
+    Text(stringResource(R.string.vibration_title), style = HnType.bodyPrimary, color = HnColors.InkBlack, modifier = Modifier.padding(top = 16.dp))
+    Row(
+        Modifier
+            .padding(top = 8.dp)
+            .fillMaxWidth()
+            .clip(HnDims.pill)
+            .background(HnColors.CardTint)
+            .selectableGroup(),
+    ) {
+        listOf(
+            HapticStrength.SOFT to R.string.strength_soft,
+            HapticStrength.MEDIUM to R.string.strength_medium,
+            HapticStrength.STRONG to R.string.strength_strong,
+        ).forEach { (value, label) ->
+            val selected = strength == value
+            Box(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = HnDims.minTouch)
+                    .clip(HnDims.pill)
+                    .background(if (selected) HnColors.InkBlack else HnColors.CardTint)
+                    .selectable(selected = selected, role = Role.RadioButton) {
+                        HapticsSettings.setStrength(context, value)
+                        haptics.beat(BeatKind.LUB)
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(label), style = HnType.bodySecondary, color = if (selected) HnColors.CardWhite else HnColors.InkBlack)
+            }
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TextButton(onClick = { haptics.beat(BeatKind.LUB) }, modifier = Modifier.heightIn(min = HnDims.minTouch)) {
+            Text(stringResource(R.string.vibration_test), color = HnColors.DotRed)
+        }
+        TextButton(onClick = { HeartbeatHaptics.openSoundSettings(context) }, modifier = Modifier.heightIn(min = HnDims.minTouch)) {
+            Text(stringResource(R.string.vibration_settings), color = HnColors.InkBlack)
+        }
+    }
+}
 
 /**
  * Privacy & about: TRD § CONSENT AND DATA HANDLING in plain words (incl. the
@@ -35,7 +100,9 @@ fun PrivacySheet(onDismiss: () -> Unit, onReplayTour: () -> Unit) {
                 .padding(bottom = 32.dp)
                 .navigationBarsPadding(),
         ) {
-            Text(stringResource(R.string.privacy_title), style = HnType.cardTitle, color = HnColors.InkBlack)
+            Text(stringResource(R.string.settings_title), style = HnType.cardTitle, color = HnColors.InkBlack)
+            VibrationSettings()
+            Text(stringResource(R.string.privacy_title), style = HnType.cardTitle, color = HnColors.InkBlack, modifier = Modifier.padding(top = 24.dp))
             listOf(
                 R.string.privacy_not_stored_title to R.string.privacy_not_stored,
                 R.string.privacy_stored_title to R.string.privacy_stored,

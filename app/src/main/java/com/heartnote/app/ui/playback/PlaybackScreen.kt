@@ -56,6 +56,8 @@ import com.heartnote.app.ui.share.ShareViewModel
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.heartnote.app.signal.BeatSource
+import com.heartnote.app.haptics.HeartbeatHaptics
+import androidx.compose.foundation.layout.heightIn
 import com.heartnote.app.signal.TimedValue
 import com.heartnote.app.ui.beat.BeatBus
 import com.heartnote.app.ui.beat.BeatKind
@@ -243,7 +245,14 @@ internal fun PlaybackContent(
 
             // 6. Hints
             if (bluetoothOutput) Hint(stringResource(R.string.playback_bluetooth_hint))
-            if (!vibrationAvailable) Hint(stringResource(R.string.playback_vibration_off))
+            if (!vibrationAvailable) {
+                val context = LocalContext.current
+                Hint(stringResource(R.string.playback_vibration_off))
+                TextButton(
+                    onClick = { HeartbeatHaptics.openSoundSettings(context) },
+                    modifier = Modifier.align(Alignment.CenterHorizontally).heightIn(min = HnDims.minTouch),
+                ) { Text(stringResource(R.string.open_settings), color = HnColors.DotRed) }
+            }
         }
 
         // 7. Nav

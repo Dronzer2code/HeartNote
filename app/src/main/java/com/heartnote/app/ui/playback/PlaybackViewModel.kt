@@ -42,7 +42,7 @@ open class PlaybackViewModel(
     private val audioManager = application.getSystemService(AudioManager::class.java)
 
     private val _uiState = MutableStateFlow(
-        PlaybackUiState(vibrationAvailable = HeartbeatHaptics(application).isAvailable()),
+        PlaybackUiState(vibrationAvailable = !HeartbeatHaptics(application).mayBeOff()),
     )
     val uiState: StateFlow<PlaybackUiState> = _uiState
 

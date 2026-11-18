@@ -212,3 +212,9 @@ Done: PRD (F1 flow, F9 revised, F12→F13, F13, F14, F15, C7), TRD (project stru
 - Beat firing extracted into `BeatCursor` (+3 JVM tests: imported payload beats fire LUB/DUB with note times exactly like own notes).
 - Instrumented test `ImportedNoteBeatsTest` (device): own note → share .m4a / .mp4 → ImportManager → asserts beatSource "trace" (the metadata track round trip works on that phone) and that playing the imported note fires ≥ 3 LUB events. Run: `./gradlew :app:connectedDebugAndroidTest --tests '*ImportedNoteBeatsTest*'`.
 - How to read the result: payloadTrack=none → MediaExtractor can't read the track on this phone (fall back works via recovery; fix the reader). beats=0 → import/recovery bug. fire lines but no `vibrate … ok` → haptics subscriber. `vibrate … ok` but nothing felt → the effect/attributes (Fix 4).
+
+### Fix 4: vibration strength
+- `HapticStrength` Soft / Medium / Strong (default Strong) in SharedPreferences, picker + "Feel it" test + "Open vibration settings" at the top of the Privacy, settings & about sheet.
+- Strong/Medium with amplitude control: one waveform per beat on the LUB event, `[0, 70, dubGap−70, 45]` ms at `[0, 255, 0, 200]` (Medium 180/140), dub gap from the beat cursor; without amplitude control a 70 ms one-shot on LUB + 45 ms on DUB. Soft = the previous THUD/CLICK composition.
+- `HapticUsage` MEDIA (default) / TOUCH setting for the API 33+ comparison; switch in the debug Mix tuning screen (Fix 5). Result to be recorded in TRD after testing on the phone.
+- Hint "Turn on vibration to feel the heartbeat." + "Open settings" (ACTION_SOUND_SETTINGS) when no vibrator, ringer on Silent, or (TOUCH) touch feedback off. The media-vibration intensity itself is not readable by apps (hidden setting; SecurityException on Android 12+).

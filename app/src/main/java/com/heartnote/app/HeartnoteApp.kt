@@ -1,6 +1,7 @@
 package com.heartnote.app
 
 import android.app.Application
+import com.heartnote.app.haptics.HapticsSettings
 import com.heartnote.app.haptics.HeartbeatHaptics
 import com.heartnote.app.ui.beat.BeatBus
 import com.presagetech.smartspectra.CameraSelection
@@ -27,6 +28,7 @@ class HeartnoteApp : Application() {
 
         // The only haptics subscriber: one vibration per playback beat event,
         // however many screens are observing the bus. Live beats never vibrate.
+        HapticsSettings.load(this)
         val haptics = HeartbeatHaptics(this)
         appScope.launch { BeatBus.events.collect { haptics.play(it) } }
     }
