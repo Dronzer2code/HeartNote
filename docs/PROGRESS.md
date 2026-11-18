@@ -165,3 +165,12 @@ Done:
 Deviations: video bitrate 1.8 Mbps instead of 2 Mbps (2 Mbps + 128 kbps × 60 s = 15.96 MB, no headroom under the 16 MB target); cache path `share/Heartnote for <title>.mp4` instead of `notes/<id>/heartnote.mp4` so the recipient sees a meaningful file name. Hold screen's share button shares audio directly.
 
 Needs the phone: encode a real note (speed, size ≤ 16 MB for 60 s, cancel), play in Google Photos and in WhatsApp (sent as media).
+
+## 2026-11-18 — Step 5: beat recovery
+
+Done:
+- `BeatRecovery` (MediaExtractor + MediaCodec decode → mono, PCM16 or float, any rate/channels) + `BeatRecoveryCore` (pure Kotlin): 8 kHz → band-pass → normalised cross-correlation with the lub and dub templates → adaptive threshold (rolling median + 4×MAD, with an absolute floor) → 333 ms spacing → dub check → rhythm-guided gap search → RR 333–1500 ms → refuse if < 10 beats or BPM outside 40–180.
+- **Deviation:** band 40–100 Hz instead of 40–220 Hz. Measured on the test fixtures: at 220 Hz voice fundamentals score like beats (beats p10 0.39 vs voice-only max 0.46, inseparable); at 100 Hz beats p10 0.77 vs voice max 0.49.
+- JVM proxy result (speech-like voice at the real mix gain, 8 kHz band limit + noise): **100% of beats within ±60 ms, 0 extra** at 62/78/96 BPM, at 72 BPM with a deep (≥85 Hz) voice, and for CLASSIC-sound notes; voice-only audio is refused.
+
+Not done — needs the phone: the § BEAT RECOVERY on-device test (export → WhatsApp **as media** → re-import → match rate vs original). The emulator was stopped by Claude Code for low memory and not restarted; WhatsApp needs a real phone anyway.
