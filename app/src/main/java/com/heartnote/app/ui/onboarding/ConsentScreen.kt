@@ -42,6 +42,9 @@ import androidx.compose.ui.unit.dp
 import com.heartnote.app.R
 import com.heartnote.app.ui.components.HeartnoteIcons
 import com.heartnote.app.ui.components.TwoToneHeading
+import com.heartnote.app.ui.components.HeartnoteLogo
+import com.heartnote.app.ui.components.entrance
+import com.heartnote.app.ui.components.warmGlow
 import com.heartnote.app.ui.theme.HnColors
 import com.heartnote.app.ui.theme.HnDims
 import com.heartnote.app.ui.theme.HnType
@@ -96,16 +99,23 @@ internal fun ConsentContent(declined: Boolean, onAccept: () -> Unit, onDecline: 
         Modifier
             .fillMaxSize()
             .background(HnColors.LightBg)
+            .warmGlow(centerX = 0.5f, centerY = 0.0f, radiusFraction = 0.45f, alpha = 0.10f)
             .safeDrawingPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = HnDims.screenPadding),
     ) {
-        Spacer(Modifier.height(48.dp))
-        TwoToneHeading(stringResource(R.string.consent_heading_grey), stringResource(R.string.consent_heading_black))
+        Spacer(Modifier.height(36.dp))
+        HeartnoteLogo(72.dp, Modifier.entrance(0), glow = true)
+        Spacer(Modifier.height(24.dp))
+        TwoToneHeading(
+            stringResource(R.string.consent_heading_grey),
+            stringResource(R.string.consent_heading_black),
+            Modifier.entrance(1),
+        )
         Spacer(Modifier.height(28.dp))
-        ConsentRow(HeartnoteIcons.Camera, stringResource(R.string.consent_camera))
-        ConsentRow(HeartnoteIcons.Phone, stringResource(R.string.consent_phone))
-        ConsentRow(HeartnoteIcons.Trash, stringResource(R.string.consent_delete))
+        Column(Modifier.entrance(2)) { ConsentRow(HeartnoteIcons.Camera, stringResource(R.string.consent_camera)) }
+        Column(Modifier.entrance(3)) { ConsentRow(HeartnoteIcons.Phone, stringResource(R.string.consent_phone)) }
+        Column(Modifier.entrance(4)) { ConsentRow(HeartnoteIcons.Trash, stringResource(R.string.consent_delete)) }
         Spacer(Modifier.height(32.dp))
         Text(
             stringResource(R.string.consent_not_medical),

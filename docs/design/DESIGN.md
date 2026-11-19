@@ -251,6 +251,19 @@ File: `ui/components/ParticleHeart.kt` (uses `ParticleEngine`). Visual target: a
 - No dark core overlay (that is RecordScreen-only).
 - Reduced motion: no sway and no noise; beats are a uniform scale only.
 
+## APP LOGO AND LIVELY MOTION
+
+- App logo: `res/drawable-nodpi/heartnote_logo.webp` (rounded black tile, white voice bars, red ribbon heart). The launcher icon is adaptive: black background (`@color/icon_background` = DarkBg), the logo art as foreground inside the 72 dp safe zone, plus a monochrome layer for themed icons. On Android 12+ the system splash shows it on black.
+- Scope: the opening screens (Consent, WelcomeChoice) and the home screen (Library, including its top bar and ArcNavBar). Sub-screens (Record, Playback, Hold, Tour, sheets) are unchanged.
+- No new colours: every effect uses existing tokens; red light is `DotRed` at 7–16 % alpha (`warmGlow`).
+- `ui/components/Lively.kt`:
+  - `HeartnoteLogo(size, glow)`: the logo, beating lub-dub at 70 BPM (scale +5–6 %); `glow` adds a DotRed radial halo that swells on each lub.
+  - `entrance(index)`: fade + 18 dp rise, staggered 70 ms per index, 480 ms; plays once per item (saved state).
+  - `heartbeatHalo`: DotRed rings rippling from the Record button on lub and dub (Library only, `ArcNavBar(centreHalo = true)`).
+  - `rememberCountUp` / `rememberRise`: the latest note's beat count counts up and its dot chart rises when the note changes.
+  - Library heading: a small DotRed heart beside "heartbeat" beats at 70 BPM.
+- Reduced motion (animator scale 0) and Compose previews show the resting state: no pulse, no entrance, no ripples.
+
 ## CONSTRAINTS
 
 - MUST NOT copy any medical text from the references (lists per screen above).

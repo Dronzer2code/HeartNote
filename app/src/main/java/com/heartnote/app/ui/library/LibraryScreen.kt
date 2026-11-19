@@ -61,6 +61,14 @@ import com.heartnote.app.ui.theme.HnColors
 import com.heartnote.app.ui.theme.HnDims
 import com.heartnote.app.ui.theme.HnType
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.graphics.graphicsLayer
+import com.heartnote.app.ui.components.HeartnoteLogo
+import com.heartnote.app.ui.components.entrance
+import com.heartnote.app.ui.components.rememberCountUp
+import com.heartnote.app.ui.components.rememberHeartbeatScale
+import com.heartnote.app.ui.components.rememberRise
+import com.heartnote.app.ui.components.warmGlow
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.CircularProgressIndicator
@@ -139,7 +147,10 @@ internal fun LibraryContent(
     Box(
         Modifier
             .fillMaxSize()
-            .background(HnColors.LightBg),
+            .background(HnColors.LightBg)
+            // Warm red light behind the header and the Record button (existing DotRed, alpha only).
+            .warmGlow(centerX = 0.95f, centerY = 0.02f, radiusFraction = 0.5f, alpha = 0.10f)
+            .warmGlow(centerX = 0.5f, centerY = 1.02f, radiusFraction = 0.35f, alpha = 0.08f),
     ) {
         LazyColumn(
             state = listState,
@@ -150,16 +161,19 @@ internal fun LibraryContent(
                 bottom = insets.calculateBottomPadding() + NAV_SPACE,
             ),
         ) {
-            item { TopRow(onPrivacy) }
+            item { TopRow(onPrivacy, Modifier.entrance(0)) }
             item {
-                TwoToneHeading(
-                    stringResource(R.string.library_heading_grey),
-                    stringResource(R.string.library_heading_black),
-                    Modifier.padding(top = 28.dp, bottom = 20.dp),
-                )
+                Row(Modifier.padding(top = 28.dp, bottom = 20.dp).entrance(1), verticalAlignment = Alignment.Bottom) {
+                    TwoToneHeading(
+                        stringResource(R.string.library_heading_grey),
+                        stringResource(R.string.library_heading_black),
+                    )
+                    BeatingHeart(Modifier.padding(start = 10.dp, bottom = 9.dp))
+                }
             }
             item {
                 LatestCard(
+                    modifier = Modifier.entrance(2),
                     note = latest,
                     columns = state.latestColumns,
                     onOpen = { latest?.let { onOpenNote(it.id) } },
@@ -176,8 +190,8 @@ internal fun LibraryContent(
                             modifier = Modifier.padding(top = 24.dp, bottom = 8.dp, start = 4.dp),
                         )
                     }
-                    items(group, key = { it.id }) { note ->
-                        NoteRow(note, onClick = { onOpenNote(note.id) })
+                    itemsIndexed(group, key = { _, it -> it.id }) { i, note ->
+                        NoteRow(note, onClick = { onOpenNote(note.id) }, modifier = Modifier.entrance(3 + i.coerceAtMost(6)))
                     }
                 }
             }
@@ -223,6 +237,7 @@ internal fun LibraryContent(
             ),
             outerRight = NavAction(HeartnoteIcons.Import, stringResource(R.string.cd_import), onImport),
             label = stringResource(R.string.nav_record),
+            centreHalo = true,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -233,22 +248,9 @@ internal fun LibraryContent(
 }
 
 @Composable
-private fun TopRow(onPrivacy: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(HnColors.CardWhite),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(HnColors.DotRed),
-            )
-        }
+private fun TopRow(onPrivacy: () -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        HeartnoteLogo(44.dp, amount = 0.05f)
         Column(
             Modifier
                 .weight(1f)
@@ -262,13 +264,24 @@ private fun TopRow(onPrivacy: () -> Unit) {
 }
 
 @Composable
-private fun LatestCard(note: NoteMeta?, columns: FloatArray?, onOpen: () -> Unit, onHistory: () -> Unit) {
+private fun LatestCard(
+    note: NoteMeta?,
+    columns: FloatArray?,
+    onOpen: () -> Unit,
+    onHistory: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
+    // The beat count counts up and the dot chart rises whenever the latest note changes.
+    val count = rememberCountUp(note?.beatCount, note?.id)
+    val rise = rememberRise(note?.id to (columns != null))
+    val shownColumns = (columns ?: FloatArray(36)).let { c -> FloatArray(c.size) { c[it] * rise } }
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clip(HnDims.cardShape)
             .background(HnColors.CardWhite)
+            .warmGlow(centerX = 0.88f, centerY = 0.42f, radiusFraction = 0.45f, alpha = 0.07f)
             .clickable(enabled = note != null, role = Role.Button, onClick = onOpen)
             .padding(HnDims.cardPadding),
     ) {
@@ -299,7 +312,7 @@ private fun LatestCard(note: NoteMeta?, columns: FloatArray?, onOpen: () -> Unit
             horizontalArrangement = Arrangement.End,
         ) {
             DotMatrixNumber(
-                value = note?.beatCount?.toString() ?: "--",
+                value = count?.toString() ?: "--",
                 dotColor = HnColors.InkBlack,
                 digitHeight = 56.dp,
                 contentDescription = note?.let { stringResource(R.string.library_beat_count_cd, it.beatCount) }
@@ -316,18 +329,35 @@ private fun LatestCard(note: NoteMeta?, columns: FloatArray?, onOpen: () -> Unit
             if (note != null) Text(stringResource(R.string.library_beats), style = HnType.bodySecondary, color = HnColors.InkGrey)
         }
         DotBarChart(
-            values = columns ?: FloatArray(36),
+            values = shownColumns,
             rows = 9,
             modifier = Modifier.fillMaxWidth(),
         )
     }
 }
 
+/** Small DotRed heart beside the heading, beating at 70 BPM. */
 @Composable
-private fun NoteRow(note: NoteMeta, onClick: () -> Unit) {
+private fun BeatingHeart(modifier: Modifier = Modifier) {
+    val scale by rememberHeartbeatScale(0.16f)
+    Icon(
+        HeartnoteIcons.HeartFilled,
+        contentDescription = null,
+        tint = HnColors.DotRed,
+        modifier = modifier
+            .size(28.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+    )
+}
+
+@Composable
+private fun NoteRow(note: NoteMeta, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     Row(
-        Modifier
+        modifier
             .padding(top = 8.dp)
             .fillMaxWidth()
             .heightIn(min = 64.dp)

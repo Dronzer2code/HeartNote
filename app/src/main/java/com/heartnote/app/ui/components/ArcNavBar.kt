@@ -50,6 +50,8 @@ fun ArcNavBar(
     label: String,
     modifier: Modifier = Modifier,
     scrim: Color = HnColors.LightBg,
+    /** Home screen: a DotRed heartbeat ripple around the centre button. */
+    centreHalo: Boolean = false,
 ) {
     BoxWithConstraints(
         modifier
@@ -91,7 +93,11 @@ fun ArcNavBar(
                 .offset(x = w / 2 - LABEL_WIDTH / 2)
                 .width(LABEL_WIDTH),
         ) {
-            Box(Modifier.offset(x = LABEL_WIDTH / 2 - centreSize / 2)) {
+            Box(
+                Modifier
+                    .offset(x = LABEL_WIDTH / 2 - centreSize / 2)
+                    .then(if (centreHalo) Modifier.heartbeatHalo(centreSize) else Modifier),
+            ) {
                 CircleIconButton(
                     icon = centre.icon,
                     contentDescription = centre.contentDescription,

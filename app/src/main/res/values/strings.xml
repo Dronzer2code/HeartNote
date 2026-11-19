@@ -68,6 +68,7 @@
     <string name="library_row_detail">%1$s • %2$s</string>
     <string name="library_beat_count_cd">%1$d heartbeats</string>
     <string name="cd_privacy">Privacy</string>
+    <string name="cd_logo">Heartnote logo</string>
     <string name="cd_all_notes">All notes</string>
     <string name="cd_hold_latest">Hold the latest note</string>
     <string name="cd_record">Record</string>

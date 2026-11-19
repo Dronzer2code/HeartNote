@@ -233,3 +233,8 @@ Done: PRD (F1 flow, F9 revised, F12→F13, F13, F14, F15, C7), TRD (project stru
 3. Strength levels: Privacy, settings & about → Soft / Medium / Strong + "Feel it"; then play a note at each level.
 4. Vibration usage: Mix tuning (debug) → MEDIA vs TOUCH, normal and Silent mode → tell me which; I record it in TRD.
 5. Mix tuning: record a note with real speech, open Mix tuning, pick voice/heartbeat gains by ear on the speaker → tell me the values (defaults now −9 dB / 0 dB).
+
+## 2026-11-19 — App logo + livelier opening/home screens
+- App logo from the supplied artwork: adaptive launcher icon (black background, foreground sized for the 72 dp safe zone, monochrome layer for themed icons), legacy square/round icons, Android 12+ splash on black, in-app `heartnote_logo.webp`. Template robot vectors removed.
+- Consent, WelcomeChoice and Library (top bar + nav) made livelier with motion only, no new colours (DESIGN.md § APP LOGO AND LIVELY MOTION): beating logo with DotRed glow, staggered entrances, warm DotRed light, beating heart by the heading, count-up beat number, rising dot chart, heartbeat ripple around Record. Sub-screens untouched. Reduced motion shows the resting state.
+- Checked with Compose preview renders (Consent, WelcomeChoice, Library, logo); debug build and 45 unit tests pass. Not yet seen on the phone: launcher icon under the phone's icon shape, splash, and the motion at full frame rate.

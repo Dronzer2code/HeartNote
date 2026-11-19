@@ -21,6 +21,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.heartnote.app.R
 import com.heartnote.app.ui.components.TwoToneHeading
+import com.heartnote.app.ui.components.HeartnoteLogo
+import com.heartnote.app.ui.components.entrance
+import com.heartnote.app.ui.components.warmGlow
 import com.heartnote.app.ui.theme.HnColors
 import com.heartnote.app.ui.theme.HnDims
 import com.heartnote.app.ui.theme.HnType
@@ -32,23 +35,37 @@ fun WelcomeChoiceScreen(onTour: () -> Unit, onSkip: () -> Unit) {
         Modifier
             .fillMaxSize()
             .background(HnColors.LightBg)
+            .warmGlow(centerX = 0.5f, centerY = 0.3f, radiusFraction = 0.5f, alpha = 0.10f)
             .safeDrawingPadding()
             .padding(horizontal = HnDims.screenPadding),
     ) {
-        Spacer(Modifier.weight(1f))
-        TwoToneHeading(stringResource(R.string.welcome_heading_grey), stringResource(R.string.welcome_heading_black))
+        Spacer(Modifier.weight(0.8f))
+        HeartnoteLogo(
+            120.dp,
+            Modifier
+                .align(Alignment.CenterHorizontally)
+                .entrance(0),
+            glow = true,
+        )
+        Spacer(Modifier.height(40.dp))
+        TwoToneHeading(
+            stringResource(R.string.welcome_heading_grey),
+            stringResource(R.string.welcome_heading_black),
+            Modifier.entrance(1),
+        )
         Text(
             stringResource(R.string.welcome_line),
             style = HnType.bodySecondary,
             color = HnColors.InkGrey,
-            modifier = Modifier.padding(top = 12.dp),
+            modifier = Modifier.padding(top = 12.dp).entrance(2),
         )
-        Spacer(Modifier.weight(1.4f))
-        PrimaryPill(stringResource(R.string.welcome_tour), onTour)
+        Spacer(Modifier.weight(1.2f))
+        PrimaryPill(stringResource(R.string.welcome_tour), onTour, Modifier.entrance(3))
         TextButton(
             onClick = onSkip,
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
+                .entrance(4)
                 .padding(vertical = 8.dp)
                 .heightIn(min = HnDims.minTouch),
         ) {
