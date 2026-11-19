@@ -34,7 +34,7 @@ The video shows the whole loop on a real Android phone: consent, recording with 
 
 ## Code
 
-{% embed https://github.com/Dronzer2code/HeartNote %}
+**Repository:** [github.com/Dronzer2code/HeartNote](https://github.com/Dronzer2code/HeartNote)
 
 Native Android: Kotlin 2.2 and Jetpack Compose, minSdk 28, targetSdk 36. Setup is in the README. In short:
 
