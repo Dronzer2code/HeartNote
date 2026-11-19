@@ -328,6 +328,10 @@ fun ParticleCanvas(
     modifier: Modifier = Modifier,
     interactive: Boolean = true,
     fpsTag: String = "Particles",
+    /** 0 = every display frame. RecordScreen caps at 30 so the SDK keeps the CPU/GPU it needs. */
+    maxFps: Int = 0,
+    /** Blur glow layer (API 31+). Off while recording: a full-layer blur every frame is costly. */
+    glow: Boolean = true,
     overlay: (DrawScope.(engine: ParticleEngine) -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -349,6 +353,7 @@ fun ParticleCanvas(
         var windowStart = 0L
         var frames = 0
         var lastLog = 0L
+        val minFrameNanos = if (maxFps > 0) 1_000_000_000L / maxFps - 2_000_000L else 0L
         while (isActive) {
             withFrameNanos { now ->
                 if (start < 0) {
@@ -356,6 +361,8 @@ fun ParticleCanvas(
                     last = now
                     windowStart = now
                 }
+                // Frame cap: skip this vsync (no step, no redraw) until the next slot.
+                if (minFrameNanos > 0 && now != start && now - last < minFrameNanos) return@withFrameNanos
                 val dt = ((now - last) / 1e9f).coerceIn(0f, 0.1f)
                 last = now
                 engine.step((now - start) / 1e9f, dt, touchRadiusPx, reducedMotion)
@@ -419,7 +426,7 @@ fun ParticleCanvas(
             .then(gestures)
             .clearAndSetSemantics { },
     ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (glow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val blurPx = with(density) { GLOW_BLUR.toPx() }
             Canvas(
                 Modifier

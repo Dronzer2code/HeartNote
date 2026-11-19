@@ -38,11 +38,12 @@ flowchart TD
 stateDiagram-v2
     [*] --> Confirm
     Confirm --> Preview: user confirms "I am recording myself"
-    Preview --> LockOn: user taps Start AND a face emission within the last 1000 ms
+    Preview --> LockOn: user taps Start AND a face emission within the last 2000 ms
     LockOn --> Recording: first pulseRate sample received after LockOn entry
-    LockOn --> Preview: 20 s timeout (show "Move to better light")
+    LockOn --> Preview: 30 s timeout (show "Move to better light")
     Recording --> Flushing: Stop tapped OR 60 s reached
-    Recording --> Preview: face lost > 3 s (discard, show reason)
+    Recording --> Flushing: face lost > 8 s, SDK error, or app backgrounded, with ≥ 10 s recorded (note kept)
+    Recording --> Preview: same, with < 10 s recorded (discard, show reason)
     Flushing --> Processing: 2.5 s SDK tail flush elapsed
     Processing --> [*]: note saved → PlaybackScreen
     Processing --> Preview: processing error (show error)
@@ -51,7 +52,8 @@ stateDiagram-v2
 Rules:
 - Audio capture starts on entering `Recording`, not during `LockOn` (lock-on silence is not part of the note).
 - Audio capture stops IMMEDIATELY on entering `Flushing` (this fixes `durationMs`). The SDK keeps running for 2.5 s to flush delayed samples (measured medians: bpTrace 1.5 s, pulseRate 2.0 s behind wall clock), then `sdk.stop()`. UI during `Flushing`: "Finishing your heartbeat…".
-- Metrics emissions are split by type (face, cardio, breathing arrive as separate messages), so "face present" = a face-bearing emission within the last 1000 ms.
+- Metrics emissions are split by type (face, cardio, breathing arrive as separate messages), so "face present" = a face-bearing emission within the last 2000 ms (was 1000 ms; widened 2026-11-19 because a slow camera spaces face emissions out). While recording with no face, the status line says "Keep your face in view of the camera."
+- The screen is kept on for the whole Record screen (`view.keepScreenOn`); otherwise the screen timeout backgrounds the app mid-note.
 - The SDK runs from `Preview` through `Flushing`. `sdk.stop()` is called on leaving `Flushing` or when the screen stops.
 - `sdk.processingStatus == ERROR` from any state → show `sdk.error`, return to `Preview`.
 

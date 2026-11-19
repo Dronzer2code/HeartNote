@@ -238,3 +238,10 @@ Done: PRD (F1 flow, F9 revised, F12→F13, F13, F14, F15, C7), TRD (project stru
 - App logo from the supplied artwork: adaptive launcher icon (black background, foreground sized for the 72 dp safe zone, monochrome layer for themed icons), legacy square/round icons, Android 12+ splash on black, in-app `heartnote_logo.webp`. Template robot vectors removed.
 - Consent, WelcomeChoice and Library (top bar + nav) made livelier with motion only, no new colours (DESIGN.md § APP LOGO AND LIVELY MOTION): beating logo with DotRed glow, staggered entrances, warm DotRed light, beating heart by the heading, count-up beat number, rising dot chart, heartbeat ripple around Record. Sub-screens untouched. Reduced motion shows the resting state.
 - Checked with Compose preview renders (Consent, WelcomeChoice, Library, logo); debug build and 45 unit tests pass. Not yet seen on the phone: launcher icon under the phone's icon shape, splash, and the motion at full frame rate.
+
+## 2026-11-19 — Slow start and recordings stopping midway
+Report: recording took much longer to start ("low frame") and, once started, stopped midway. No phone connected, so the cause is not confirmed on the device; found from the code:
+- **Stops midway:** the Record screen did not keep the screen on. A hands-free recording hit the screen timeout (shorter under Battery saver), the app went to the background and the note was discarded. Also, 3 s of sparse face emissions (slow camera) discarded the whole note.
+- **Slow start:** the SDK shares CPU/GPU with the 2,400-point sphere drawn every display frame (up to 120 Hz) plus a full-layer blur, and lock-on gave up after 20 s.
+Fixes: keep screen on; sphere capped at 30 fps and blur off while measuring; face-present window 2 s, face-lost stop 8 s with a "Keep your face in view" warning, lock-on 30 s; early ends keep notes with ≥ 10 s of audio; Battery saver / warm-phone hint; `HeartnoteCapture` debug log. Build + 45 unit tests pass.
+Must be checked on the phone: record a full 60 s note hands-free; time-to-start with and without Battery saver; send `adb logcat -s HeartnoteCapture HeartnoteFps` if it is still slow.

@@ -117,7 +117,7 @@ Background `DarkBg`. Layout top to bottom:
 |---|---|---|---|---|
 | Confirm | `Recording yourself?` | `Only the person on camera can be recorded.` (+ checkbox) | hidden | `Start` disabled until checked |
 | Preview | `Look at the camera.` | `Centre your face in the circle.` | hidden | `Start` |
-| LockOn | `Look at the camera.` | `Finding your pulse…` | lock-on % (0–100 over 20 s timeout, jumps to 100 at first pulse) | `Stop` (cancels) |
+| LockOn | `Look at the camera.` | `Finding your pulse…` | lock-on % (0–100 over 30 s timeout, jumps to 100 at first pulse) | `Stop` (cancels) |
 | Recording | `Speak now.` | `Recording • 0:23 / 1:00` | elapsed / 60 s | `Stop` |
 | Flushing | `Hold on.` | `Finishing your heartbeat…` | full, pulsing | disabled |
 | Processing | `Saving.` | `Making your Heartnote…` | indeterminate | disabled |

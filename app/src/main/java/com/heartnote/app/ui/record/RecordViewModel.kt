@@ -55,6 +55,8 @@ data class RecordUiState(
     val sdkError: String? = null,
     val info: RecordInfo? = null,
     val savedNoteId: String? = null,
+    /** Battery saver on or phone warm: a likely reason for a slow camera (see CaptureHealth). */
+    @StringRes val slowCameraHint: Int? = null,
 )
 
 class RecordViewModel(application: Application) : AndroidViewModel(application) {
@@ -62,6 +64,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private val repository = NoteRepository(application.filesDir)
     private val processor = NoteProcessor(repository)
     private val liveBeats = LiveBeatScheduler(viewModelScope)
+    private val health = CaptureHealth(application)
 
     private val _uiState = MutableStateFlow(RecordUiState())
     val uiState: StateFlow<RecordUiState> = _uiState
@@ -95,9 +98,13 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
     private val errorObserver = Observer<SmartSpectraError?> { error ->
         if (error != null) {
+            Log.i(CaptureHealth.TAG, "sdk error: ${error.message}")
             _uiState.update { it.copy(sdkError = error.message) }
-            val phase = _uiState.value.phase
-            if (phase == RecordPhase.LOCK_ON || phase == RecordPhase.RECORDING) discardSession(null)
+            when (_uiState.value.phase) {
+                RecordPhase.LOCK_ON -> discardSession(null)
+                RecordPhase.RECORDING -> keepOrDiscard(null, "sdk error")
+                else -> Unit
+            }
         }
     }
 
@@ -110,6 +117,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun onMetrics(metrics: MetricsProto.Metrics) {
+        health.onMetrics(metrics)
         // Emissions are split by type: a face-bearing emission refreshes presence.
         if (metrics.hasFace()) {
             lastFaceAtMs = SystemClock.elapsedRealtime()
@@ -300,8 +308,23 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(phase = RecordPhase.CONFIRM, savedNoteId = null, recordedMs = 0, lockOnFraction = 0f) }
     }
 
+    /**
+     * A recording that has to end early (face lost, SDK error, app backgrounded) is saved
+     * when it already has [MIN_KEEP_MS] of audio; shorter ones are discarded as before.
+     */
+    private fun keepOrDiscard(reason: RecordInfo?, why: String) {
+        val recorded = session?.audioDurationMs ?: 0L
+        if (_uiState.value.phase == RecordPhase.RECORDING && recorded >= MIN_KEEP_MS) {
+            Log.i(CaptureHealth.TAG, "stop early ($why) after ${recorded} ms: saving the note")
+            finishRecording()
+        } else {
+            discardSession(reason)
+        }
+    }
+
     /** Back to Preview, deleting the note dir. The SDK keeps running. */
     private fun discardSession(reason: RecordInfo?) {
+        Log.i(CaptureHealth.TAG, "discard phase=${_uiState.value.phase} reason=$reason recordedMs=${session?.audioDurationMs ?: 0}")
         val s = session
         session = null
         _uiState.update { it.copy(phase = RecordPhase.PREVIEW, recordedMs = 0, lockOnFraction = 0f, info = reason) }
@@ -313,8 +336,10 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             delay(TICK_MS)
             val now = SystemClock.elapsedRealtime()
             val s = session
+            health.tick(_uiState.value.phase)
             _uiState.update {
                 it.copy(
+                    slowCameraHint = health.slowCameraHint,
                     facePresent = now - lastFaceAtMs < FACE_FRESH_MS,
                     recordedMs = if (it.phase == RecordPhase.RECORDING) s?.audioDurationMs ?: 0L else it.recordedMs,
                     lockOnFraction = if (it.phase == RecordPhase.LOCK_ON) {
@@ -331,7 +356,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                 RecordPhase.RECORDING -> when {
                     s == null -> Unit
                     s.audioDurationMs >= SILENT_MIC_CHECK_MS && s.audioPeakAbs == 0 -> discardSession(RecordInfo.MIC_SILENT)
-                    now - lastFaceAtMs > FACE_LOST_DISCARD_MS -> discardSession(RecordInfo.FACE_LOST)
+                    now - lastFaceAtMs > FACE_LOST_STOP_MS -> keepOrDiscard(RecordInfo.FACE_LOST, "face lost")
                     s.audioDurationMs >= MAX_NOTE_DURATION_MS -> finishRecording()
                 }
                 else -> Unit
@@ -351,7 +376,12 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     /** ON_STOP: foreground-only capture (TRD § ANDROID 15 NOTES). */
     fun onScreenStop() {
         when (_uiState.value.phase) {
-            RecordPhase.LOCK_ON, RecordPhase.RECORDING -> {
+            RecordPhase.RECORDING -> {
+                keepOrDiscard(RecordInfo.BACKGROUNDED, "backgrounded")
+                // A kept note stops the SDK itself after its flush.
+                if (_uiState.value.phase != RecordPhase.FLUSHING) viewModelScope.launch { runCatching { capture.stop() } }
+            }
+            RecordPhase.LOCK_ON -> {
                 discardSession(RecordInfo.BACKGROUNDED)
                 viewModelScope.launch { runCatching { capture.stop() } }
             }
@@ -375,9 +405,13 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         private const val PULSE_MEDIAN_WINDOW = 5
         private const val WAVE_WINDOW = 100          // ~10 s of ~10 Hz brUpperTrace
         private const val TICK_MS = 250L
-        private const val FACE_FRESH_MS = 1000L
-        private const val FACE_LOST_DISCARD_MS = 3000L
-        const val LOCK_ON_TIMEOUT_MS = 20_000L
+        // Tolerances for a slow camera (low SDK frame rate means sparser face emissions):
+        // face counts as present for 2 s after an emission; recording ends only after 8 s
+        // without a face (with a warning shown meanwhile); lock-on may take up to 30 s.
+        private const val FACE_FRESH_MS = 2000L
+        private const val FACE_LOST_STOP_MS = 8000L
+        private const val MIN_KEEP_MS = 10_000L
+        const val LOCK_ON_TIMEOUT_MS = 30_000L
         const val MAX_NOTE_DURATION_MS = 60_000L
         private const val SDK_TAIL_FLUSH_MS = 2500L
         private const val SILENT_MIC_CHECK_MS = 2000L

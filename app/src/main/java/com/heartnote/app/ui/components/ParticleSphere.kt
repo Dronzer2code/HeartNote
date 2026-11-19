@@ -42,6 +42,8 @@ fun ParticleSphere(
     breath: () -> Float,
     modifier: Modifier = Modifier,
     interactive: Boolean = true,
+    maxFps: Int = 0,
+    glow: Boolean = true,
 ) {
     val currentBreath = rememberUpdatedState(breath)
     val model = remember { SphereModel { currentBreath.value() } }
@@ -52,6 +54,8 @@ fun ParticleSphere(
         modifier = modifier,
         interactive = interactive,
         fpsTag = "Sphere",
+        maxFps = maxFps,
+        glow = glow,
         overlay = { _ ->
             // Dark core so the digits stay readable (reference has a dark centre).
             val r = SphereModel.RADIUS_FRACTION * min(size.width, size.height) * CORE_FRACTION

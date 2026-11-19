@@ -43,6 +43,9 @@
     <string name="record_info_mic_error">Microphone error — the recording was discarded.</string>
     <string name="record_info_background">Recording stopped because Heartnote went to the background.</string>
     <string name="record_info_save_failed">Could not finish this note.</string>
+    <string name="record_recording_face_warning">Keep your face in view of the camera.</string>
+    <string name="record_hint_power_save">Battery saver is on and can slow the camera. Turn it off for a quicker start.</string>
+    <string name="record_hint_warm">Your phone is warm, so the camera may run slowly. Let it cool for a few minutes.</string>
     <string name="record_error_mic_silent">Heartnote can\'t hear your microphone. Check that microphone access is on (Settings › Privacy) and that no other app is recording.</string>
     <string name="record_permission_needed">Heartnote needs the camera to read your pulse and the microphone to record your voice.</string>
     <string name="record_permission_button">Allow camera &amp; microphone</string>

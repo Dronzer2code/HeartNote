@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -103,6 +104,14 @@ fun RecordScreen(
         }
     }
 
+    // Recording is hands-free: without this the screen times out mid-note, the app goes to
+    // the background and the note is stopped (Battery saver shortens the timeout further).
+    val view = LocalView.current
+    DisposableEffect(view) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -128,10 +137,16 @@ fun RecordScreen(
         onRetry = viewModel::retryProcessing,
         onDeleteFailed = viewModel::deleteFailedNote,
         sphere = { size ->
+            // The SDK shares the phone with this sphere: cap it at 30 fps, and drop the blur
+            // glow while measuring, so a busy or warm phone keeps the camera frame rate up.
+            val measuring = state.phase == RecordPhase.LOCK_ON || state.phase == RecordPhase.RECORDING ||
+                state.phase == RecordPhase.FLUSHING
             ParticleSphere(
                 beatEvents = BeatBus.events,
                 breath = { viewModel.breathNormalised },
                 modifier = Modifier.size(size),
+                maxFps = SPHERE_MAX_FPS,
+                glow = !measuring,
             )
         },
         camera = { modifier, desaturate ->
@@ -363,10 +378,19 @@ private fun StatusLines(state: RecordUiState) {
         state.phase == RecordPhase.PREVIEW || state.phase == RecordPhase.LOCK_ON || state.phase == RecordPhase.RECORDING
     }
     val error = state.sdkError
+    val faceWarning = if (state.phase == RecordPhase.RECORDING && !state.facePresent) {
+        stringResource(R.string.record_recording_face_warning)
+    } else {
+        null
+    }
+    // Battery saver / warm phone: shown while waiting to start, when it explains a slow start.
+    val slowHint = state.slowCameraHint?.takeIf {
+        state.phase == RecordPhase.CONFIRM || state.phase == RecordPhase.PREVIEW || state.phase == RecordPhase.LOCK_ON
+    }?.let { stringResource(it) }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(stringResource(primary), style = HnType.recordStatus, color = HnColors.OnDark, textAlign = TextAlign.Center)
         Text(
-            error ?: hint ?: secondary,
+            error ?: faceWarning ?: hint ?: slowHint ?: secondary,
             style = HnType.recordStatusSecondary,
             color = if (error != null) HnColors.SignalRed else HnColors.InkGrey,
             textAlign = TextAlign.Center,
@@ -398,6 +422,7 @@ private fun ProgressBlock(state: RecordUiState, modifier: Modifier) {
 }
 
 private val SPHERE_SIZE = 320.dp
+private const val SPHERE_MAX_FPS = 30
 private const val CAMERA_FRACTION = 0.62f
 private const val CAMERA_ALPHA = 0.45f
 /** DESIGN.md: 0% while recording; switch to 0.12f if the SDK stops receiving frames at 0. */
