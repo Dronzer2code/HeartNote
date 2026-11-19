@@ -18,6 +18,8 @@ Who it's for: grandparents recording for grandchildren, people living far from f
 
 TODO: video link (under 2 minutes) and GIF.
 
+Narration and timings: `docs/DEMO_SCRIPT.md`.
+
 Shot list (from `MVP.md`):
 1. The problem in one line.
 2. First launch → consent screen.
