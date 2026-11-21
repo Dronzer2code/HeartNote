@@ -5,6 +5,8 @@
 > We can send voice messages to anyone, anywhere. But there's one thing they can't carry: the feeling of being close to someone.
 > A voice can tell you how someone feels. But what if you could actually *feel* them?
 
+**📲 [Download the Heartnote APK](https://drive.google.com/drive/folders/1y-YCHGZBaAIKrFBRwdPCQALGZdgDndiz?usp=sharing)** · **🎬 [Watch the 2-minute demo](https://youtu.be/fdZyFwfX9mY)** · **💻 [Source on GitHub](https://github.com/Dronzer2code/HeartNote)**
+
 ## What I Built
 
 **Heartnote** is an Android app for voice notes you can feel.
@@ -16,6 +18,33 @@ You look at your phone and record a message. While you talk, the **Presage Smart
 - ✨ the screen ripples with particles.
 
 Then they can tap **Hold**, put the phone in their palm, and feel a heart beat in their hand.
+
+### Why feeling a heartbeat changes how a voice lands
+
+Think of the last time you fell asleep on someone's chest. You didn't hear the words they said. You heard *thump, thump, thump*, slow and steady under your ear, and that told you everything: *I'm here. You're safe. I'm not going anywhere.*
+
+A heartbeat is the oldest sound any of us know. We heard one for nine months before we ever heard a word. It's the sound of someone being alive, right next to you. And it's the one thing a voice message has always left behind.
+
+A voice note carries *what* someone said. It doesn't carry the body that said it: the heart that sped up on "I'm so proud of you", or the slow, calm rhythm of a grandmother saying goodnight. Heartnote puts that body back into the message, as sound **and** as touch, timed to the exact words.
+
+This isn't just a nice idea. It's what research on heartbeats and connection keeps finding:
+
+![What research says about feeling someone's heartbeat](https://raw.githubusercontent.com/Dronzer2code/HeartNote/main/docs/images/research.png)
+
+- **A heartbeat is a cue of closeness.** In two studies, Janssen and colleagues found that hearing a conversation partner's heartbeat changed people's behaviour the way eye contact and physical closeness do. But there was a catch: it only worked when people believed the heartbeat *belonged to the partner*. A generic heartbeat sound did nothing. ([Janssen et al., 2010](https://vhil.stanford.edu/publications/avatars-and-agents/intimate-heartbeats-opportunities-affective-communication)) The researchers also suggested the same feeling could travel as touch, through something like a vibrating ring. ([ScienceDaily summary](https://sciencedaily.com/releases/2011/04/110407093118.htm))
+- **Hearing a heartbeat builds empathy.** At CHI 2021, Winters, Walker and Leslie found that hearing heartbeats increased people's reported ability to "feel what the other was feeling". ([Winters et al., 2021](https://microsoft.com/en-us/research/?p=815314))
+- **Sharing heart rate feels like connection.** In lab studies and a two-week trial in people's homes, Slovák, Janssen and Fitzpatrick found heart-rate sharing worked as a strong connectedness cue. Their participants experienced it both as information and as *connection*. ([Slovák et al., CHI 2012](https://core.ac.uk/download/83920447.pdf))
+- **And the voice already matters more than we think.** Seltzer, Ziegler and Pollak found that children comforted *only by their mother's voice* showed a hormonal response like the one from being comforted in person. They concluded that the voice may matter about as much as touch for human bonding. ([Seltzer et al., 2010](https://pmc.ncbi.nlm.nih.gov/articles/PMC2982050))
+
+Put those together and you get Heartnote's core design rule: **the heartbeat has to be real, and it has to be theirs.** A looping heartbeat sound would be a sound effect. Janssen's work suggests people feel the difference. So every beat in a Heartnote is a beat SmartSpectra measured from the speaker's face *while they were saying those words*, and the app tells the listener whether the beats were timed from the waveform or paced from the live pulse.
+
+![One moment, three senses: voice, heartbeat sound and vibration on the same beat](https://raw.githubusercontent.com/Dronzer2code/HeartNote/main/docs/images/three-senses.png)
+
+Voice, heartbeat sound and vibration arrive together. You hear "I miss you", and at the same moment you hear and *feel* the heart of the person who said it.
+
+I want to be honest about the limits. These studies looked at heartbeats in labs, conversations and homes. Not one of them tested a voice note like this, and no one has measured Heartnote's effect yet. Reviews of remote touch make the same point: its benefits are often assumed rather than tested ([Haans & IJsselsteijn, 2006](https://link.springer.com/doi/10.1007/s10055-005-0014-2)). A proper study with families who live apart is the next thing I want to run. What the research does say clearly is where to look: a *real* heartbeat, *attributed* to the person you love, is one of the most intimate signals a human body can send.
+
+Heartnote makes no health or medical claims. It's about closeness, not measurement.
 
 ![Heartnote: the home screen, a note playing, and Hold mode](https://raw.githubusercontent.com/Dronzer2code/HeartNote/main/docs/images/screens/hero.jpg)
 *Home, a note playing (its dot chart fills as it plays, one red column per beat), and Hold mode.*
@@ -44,7 +73,7 @@ Native Android: Kotlin 2.2, Jetpack Compose, minSdk 28, targetSdk 36. The README
 2. `./gradlew :app:installDebug`
 3. Run it on a **physical phone**. The emulator has no real front camera for SmartSpectra to read.
 
-There's no login, no account and no server, so judges can install it and record straight away.
+**Just want to try it?** [Download the APK](https://drive.google.com/drive/folders/1y-YCHGZBaAIKrFBRwdPCQALGZdgDndiz?usp=sharing) and install it on an Android phone running Android 9 or newer. You may need to allow "Install unknown apps" for your browser or Files app. There's no login, no account and no server, so judges can install it and record straight away.
 
 ## How It Responds to Human Signals
 
