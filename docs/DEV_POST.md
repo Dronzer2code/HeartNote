@@ -77,7 +77,11 @@ Native Android: Kotlin 2.2, Jetpack Compose, minSdk 28, targetSdk 36. The README
 
 ## How It Responds to Human Signals
 
-Heartnote uses **four live SmartSpectra signals: the pulse waveform, pulse rate, breathing and facial expressions**, plus face presence as a gate. The whole integration starts in `Application.onCreate`:
+Heartnote uses **four live SmartSpectra signals: the pulse waveform, pulse rate, breathing and facial expressions**, plus face presence as a gate.
+
+![From a face to a felt heartbeat: camera, SmartSpectra, signals, beat times, sound, vibration, particles](https://raw.githubusercontent.com/Dronzer2code/HeartNote/main/docs/images/figs/pipeline.png)
+
+The whole integration starts in `Application.onCreate`:
 
 ```kotlin
 val sdk = SmartSpectraSdk.shared
@@ -100,14 +104,11 @@ The Record screen then collects `sdk.metricsFlow`, while `processingStatus`, `va
 
 A pulse *rate* wasn't enough for this idea. "72 BPM" gives you a metronome, and a metronome isn't *you*. I wanted the actual moments your heart beat while you said "I miss you".
 
-So Heartnote turns SmartSpectra's cardio waveform (`arterialPressureTrace`, about 30 samples a second) into individual beat times:
+So Heartnote turns SmartSpectra's cardio waveform (`arterialPressureTrace`, about 30 samples a second) into individual beat times. It resamples to an even 30 Hz, removes slow drift, and finds peaks at least 333 ms apart:
 
-1. **Resample** to an even 30 Hz and remove slow drift.
-2. **Find peaks** at least 333 ms apart, with a prominence threshold relative to the recent signal.
-3. **Drop the secondary bumps.** Every heartbeat has a smaller second wave, and early versions counted it as another beat. Comparing peaks to the *median* height didn't work, because secondary waves can be half of all candidates. Comparing them to the **80th percentile** does.
-4. **Check against the SDK's pulse rate** and fill short gaps from it.
+![Finding your real beats: main peaks kept, secondary waves dropped](https://raw.githubusercontent.com/Dronzer2code/HeartNote/main/docs/images/figs/beats.png)
 
-On a 60-second test recording this found **85 beats (84.6 BPM)**. The SDK's mean pulse rate for the same minute was **83.7 BPM**.
+The tricky part was the **secondary bump** each heartbeat makes. Early versions counted it as a second beat. Comparing peaks to the *median* height didn't fix it, because secondary waves can be half of all candidates. Comparing them to the **80th percentile** does. On a 60-second test recording this found **85 beats (84.6 BPM)**, against the SDK's own **83.7 BPM** mean for the same minute.
 
 When the waveform isn't clean enough, for example in dim light or with lots of movement, the rate check fails. Heartnote then falls back to beats **paced by your live pulse rate**. It tells the listener which one they're hearing: every note is labelled either **"Timed to your measured pulse"** or **"Paced by your live pulse"**. The note in the screenshots above is a paced one, and the app says so.
 
@@ -117,7 +118,10 @@ While you record, a 2,400-point particle sphere ripples on your detected beats, 
 
 On day one I logged raw `metricsFlow` emissions to find out how the SDK behaves. Two findings shaped the design:
 
-- **Signals arrive late.** Waveform samples arrive about **1.5 s** after the moment they describe, and pulse-rate samples about **2 s** after. I could have faked "real time" by making the sphere beat at the average rate. Instead it plays your *real* beats on a fixed **1.8 s delay**: slightly behind, but every ripple is a beat you actually had. For the same reason, after you tap Stop the SDK keeps running for **2.5 s** to catch the last beats of your sentence.
+- **Signals arrive late.** Waveform samples arrive about **1.5 s** after the moment they describe, and pulse-rate samples about **2 s** after. I could have faked "real time" with a sphere beating at the average rate. Instead it waits, and plays your *real* beats:
+
+![Real beats, a moment late, never faked](https://raw.githubusercontent.com/Dronzer2code/HeartNote/main/docs/images/figs/delay.png)
+
 - **Emissions are split by type.** Face, cardio and breathing data come in separate `Metrics` messages. So "is there a face?" really means "did a face message arrive recently?", not "does this message contain a face?"
 
 ### 3. Breathing, expressions and face presence
@@ -137,10 +141,11 @@ A heartbeat you can only feel on your own phone isn't much of a message. Heartno
 ![The share sheet](https://raw.githubusercontent.com/Dronzer2code/HeartNote/main/docs/images/screens/share.jpg)
 *One share sheet for every entry point, with Save to phone and the WhatsApp tip.*
 
-Then I sent one through WhatsApp as normal media, and the hidden track was gone, because WhatsApp re-encodes media. Two fixes:
+Then I sent one through WhatsApp as normal media, and the hidden track was gone, because WhatsApp re-encodes media. So there are two paths:
 
-- **Save to phone, send as a Document.** Heartnote saves the file to `Downloads/Heartnote` and shows the exact WhatsApp steps (Attach → Document). Files sent that way arrive byte-for-byte.
-- **Beat recovery from the sound itself.** Even when the data track is stripped, the heartbeat is still *in the audio*. Heartnote decodes it, keeps only the 40–100 Hz band where the heartbeat sits below most of a voice, and matches it against the known lub shape to find each beat again. On my test set, including a loud, deep voice over a quiet heartbeat, it recovered **100% of beats within ±60 ms**.
+![Making the heartbeat survive WhatsApp: Document keeps the beat track, media falls back to beat recovery](https://raw.githubusercontent.com/Dronzer2code/HeartNote/main/docs/images/figs/sharing.png)
+
+**Save to phone** puts the file in `Downloads/Heartnote` and shows the exact WhatsApp steps (Attach → Document). And if someone sends it as media anyway, the heartbeat is still *in the sound*, so Heartnote finds each beat again from the audio. That works even with a loud, deep voice over a quiet heartbeat.
 
 The video is rendered on the phone with the hardware H.264 encoder. Every frame is drawn from the note's beat times, so the same note always produces the same video.
 
@@ -173,6 +178,8 @@ I'm entering **both**.
 The privacy design below was part of the plan from day one.
 
 ## Consent and Data Handling
+
+![Where your data goes: never stored, only on your phone, only if you share](https://raw.githubusercontent.com/Dronzer2code/HeartNote/main/docs/images/figs/privacy.png)
 
 - **Consent first.** On first launch, a consent screen explains in plain words what the camera reads and what's stored. Camera and microphone permissions are requested only after you tap "I understand". Before *every* recording you tick **"I am recording myself"**, and recording can't start without a face in view. Heartnote can't be used to record someone covertly.
 - **No video is stored.** Camera frames are never saved or written anywhere. The SDK's image output is off (`imageOutputEnabled = false`), and the camera feed is used live and discarded.
